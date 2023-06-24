@@ -4,6 +4,21 @@
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+
+    <PackageId>CatConsult.AppConfigConfigurationProvider</PackageId>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/Catalyst-Consulting-Group/appconfig-configuration-provider</PackageProjectUrl>
+    <PackageTags>Configuration</PackageTags>
+
+    <Description>
+      An opinionated .NET Configuration Provider for AWS AppConfig that wraps Amazon.Extensions.Configuration.SystemsManager
+    </Description>
+    <Authors>Derek McKinnon</Authors>
+    <Company>Catalyst Consulting Group, Inc.</Company>
+
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,6 +26,10 @@
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
   
   <ItemGroup>
