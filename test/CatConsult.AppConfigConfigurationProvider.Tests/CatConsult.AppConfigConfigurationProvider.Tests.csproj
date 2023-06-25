@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CatConsult.AppConfigConfigurationProvider\CatConsult.AppConfigConfigurationProvider.csproj" />
+    <ProjectReference Include="..\..\src\CatConsult.AppConfigConfigurationProvider\CatConsult.AppConfigConfigurationProvider.csproj" />
   </ItemGroup>
 
 </Project>
