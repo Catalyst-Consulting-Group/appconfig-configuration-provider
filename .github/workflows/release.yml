@@ -18,7 +18,7 @@ jobs:
       - run: dotnet build --no-restore
 
       - run: |
-          dotnet pack CatConsult.AppConfigConfigurationProvider \
+          dotnet pack src/CatConsult.AppConfigConfigurationProvider \
             -p:PackageVersion="$GITHUB_REF_NAME" \
             --no-build \
             --output "$RUNNER_TEMP/output"
