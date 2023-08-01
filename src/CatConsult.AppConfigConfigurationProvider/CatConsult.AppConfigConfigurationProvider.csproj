@@ -22,7 +22,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Amazon.Extensions.Configuration.SystemsManager" Version="5.1.0" />
+    <PackageReference Include="AWSSDK.AppConfigData" Version="3.7.200.8" />
     <PackageReference Include="CatConsult.ConfigurationParsers" Version="2.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="6.0.0" />
