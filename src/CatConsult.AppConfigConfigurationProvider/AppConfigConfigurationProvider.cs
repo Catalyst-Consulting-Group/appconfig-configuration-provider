@@ -4,16 +4,19 @@ using Amazon.AppConfigData.Model;
 using CatConsult.ConfigurationParsers;
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Primitives;
 
 namespace CatConsult.AppConfigConfigurationProvider;
 
-public class AppConfigConfigurationProvider : ConfigurationProvider
+public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDisposable
 {
     private const int LockReleaseTimeout = 3_000;
 
     private readonly IAmazonAppConfigData _client;
     private readonly AppConfigProfile _profile;
     private readonly SemaphoreSlim _lock;
+
+    private IDisposable? _reloadChangeToken;
 
     public AppConfigConfigurationProvider(IAmazonAppConfigData client, AppConfigProfile profile)
     {
@@ -28,7 +31,20 @@ public class AppConfigConfigurationProvider : ConfigurationProvider
 
     private DateTimeOffset NextPollingTime { get; set; }
 
-    public override void Load() => LoadAsync().GetAwaiter().GetResult();
+    public override void Load()
+    {
+        LoadAsync().GetAwaiter().GetResult();
+
+        if (_profile.ReloadAfter.HasValue)
+        {
+            _reloadChangeToken = ChangeToken.OnChange(
+                () => new CancellationChangeToken(
+                    new CancellationTokenSource(_profile.ReloadAfter.Value).Token
+                ),
+                Load
+            );
+        }
+    }
 
     private async Task LoadAsync()
     {
@@ -53,7 +69,7 @@ public class AppConfigConfigurationProvider : ConfigurationProvider
             {
                 ConfigurationToken = ConfigurationToken
             };
-            
+
             var response = await _client.GetLatestConfigurationAsync(request);
             ConfigurationToken = response.NextPollConfigurationToken;
             NextPollingTime = DateTimeOffset.UtcNow.AddSeconds(response.NextPollIntervalInSeconds);
@@ -96,4 +112,6 @@ public class AppConfigConfigurationProvider : ConfigurationProvider
             _ => throw new FormatException($"This configuration provider does not support: {contentType ?? "Unknown"}")
         };
     }
+
+    public void Dispose() => _reloadChangeToken?.Dispose();
 }

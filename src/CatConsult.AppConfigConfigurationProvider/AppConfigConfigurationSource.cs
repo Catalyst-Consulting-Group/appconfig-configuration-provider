@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace CatConsult.AppConfigConfigurationProvider;
 
-public class AppConfigConfigurationSource : IConfigurationSource
+public sealed class AppConfigConfigurationSource : IConfigurationSource
 {
     private readonly AppConfigConfigurationProvider _provider;
 
