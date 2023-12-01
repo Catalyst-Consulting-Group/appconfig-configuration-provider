@@ -108,7 +108,7 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
         return contentType switch
         {
             "application/json" => JsonConfigurationParser.Parse(stream),
-            "application/yaml" => YamlConfigurationParser.Parse(stream),
+            "application/x-yaml" => YamlConfigurationParser.Parse(stream),
             _ => throw new FormatException($"This configuration provider does not support: {contentType ?? "Unknown"}")
         };
     }
