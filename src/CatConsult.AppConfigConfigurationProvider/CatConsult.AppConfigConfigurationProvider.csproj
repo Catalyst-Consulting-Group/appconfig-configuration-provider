@@ -12,7 +12,7 @@
     <PackageTags>Configuration</PackageTags>
 
     <Description>
-      An opinionated .NET Configuration Provider for AWS AppConfig that wraps Amazon.Extensions.Configuration.SystemsManager
+      An opinionated .NET Configuration Provider for AWS AppConfig
     </Description>
     <Authors>Derek McKinnon</Authors>
     <Company>Catalyst Consulting Group, Inc.</Company>
