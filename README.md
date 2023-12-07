@@ -1,7 +1,6 @@
 # AWS AppConfig Configuration Provider for .NET
 
-An opinionated [.NET Configuration Provider](https://learn.microsoft.com/en-us/dotnet/core/extensions/configuration-providers)
-for AWS AppConfig that wraps [Amazon.Extensions.Configuration.SystemsManager](https://www.nuget.org/packages/Amazon.Extensions.Configuration.SystemsManager/).
+An opinionated [.NET Configuration Provider](https://learn.microsoft.com/en-us/dotnet/core/extensions/configuration-providers) for AWS AppConfig.
 
 ## Usage
 
