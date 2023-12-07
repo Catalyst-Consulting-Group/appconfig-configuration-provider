@@ -8,12 +8,7 @@ namespace CatConsult.AppConfigConfigurationProvider.Tests;
 
 public class AppConfigProfileParserTests
 {
-    private readonly Faker _faker;
-
-    public AppConfigProfileParserTests()
-    {
-        _faker = new Faker();
-    }
+    private readonly Faker _faker = new();
 
     [Fact]
     public void Parse_Parses_Valid_Profile_String()

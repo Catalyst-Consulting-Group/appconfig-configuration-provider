@@ -72,13 +72,13 @@ public class AppConfigConfigurationProviderTests
                 It.IsAny<CancellationToken>()
             )
         ).ReturnsAsync(GenerateJsonResponse());
-        
+
         sut.Load();
 
         sut.TryGet("Name", out var value).Should().BeTrue();
         value.Should().Be("Catalyst");
     }
-    
+
     [Fact]
     public void Load_Should_Parse_Yaml()
     {
@@ -103,12 +103,14 @@ public class AppConfigConfigurationProviderTests
                 It.IsAny<CancellationToken>()
             )
         ).ReturnsAsync(GenerateYamlResponse());
-        
+
         sut.Load();
 
         sut.TryGet("Name", out var value).Should().BeTrue();
         value.Should().Be("Catalyst");
     }
+
+    // Helper methods
 
     private static GetLatestConfigurationResponse GenerateJsonResponse() =>
         GenerateResponse(@"{""Name"":""Catalyst""}", "application/json");
@@ -122,5 +124,7 @@ public class AppConfigConfigurationProviderTests
             ContentLength = 1, // this will trigger the parsing
             ContentType = contentType,
             Configuration = new MemoryStream(Encoding.UTF8.GetBytes(data)),
+            NextPollIntervalInSeconds = -1,
+            NextPollConfigurationToken = "foobar",
         };
 }
