@@ -1,0 +1,14 @@
+﻿@page
+@using Microsoft.Extensions.Options
+@model IndexModel
+@inject IOptionsSnapshot<YamlTest> Options
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<div class="text-center">
+    <p>Name: @Options.Value.Person?.Name</p>
+    <p>Age: @Options.Value.Person?.Age</p>
+    <br>
+    <p>Is this a test? @Options.Value.Test</p>
+</div>
