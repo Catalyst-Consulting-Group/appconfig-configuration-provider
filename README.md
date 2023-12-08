@@ -46,7 +46,7 @@ ApplicationId:EnvironmentId:ProfileId[:ReloadAfter]
 
 `ReloadAfter` is an optional 4th parameter that configures the reload/refresh period.
 It is an integer that represents time in seconds.
-If not specified, it defaults to the provider's default setting, which is 30 seconds.
+If not specified, it defaults to the provider's default setting, which is 90 seconds.
 
 The default `ReloadAfter` setting can be overridden as well:
 
@@ -54,8 +54,29 @@ The default `ReloadAfter` setting can be overridden as well:
 {
   "AppConfig": {
     "Defaults": {
-      "ReloadAfter": 90
+      "ReloadAfter": 120
     }
   }
 }
 ```
+
+## Sample
+
+A sample ASP.NET Web Application is available in the `samples/AppConfigTesting` folder.
+
+In your own AWS environment, copy the contents of `yamltest.yml` into a new AppConfig freeform configuration profile.
+
+Then, use `dotnet user-secrets` to specify the AppConfig profile:
+
+```shell
+dotnet user-secrets set "AppConfig:Profiles:0" "abc1234:def5678:ghi9123"
+```
+
+Finally, ensure that you have the correct AWS credentials/profile configured in your environment, and run the sample:
+
+```shell
+dotnet run
+```
+
+Experiment by changing the configuration on AppConfig and deploying. After a while, you should see the application reload the configuration automatically
+when you refresh the home page.

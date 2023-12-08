@@ -35,11 +35,13 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
     {
         LoadAsync().GetAwaiter().GetResult();
 
-        if (_profile.ReloadAfter.HasValue)
+        if (_reloadChangeToken is null && _profile.ReloadAfter.HasValue)
         {
+            var delay = TimeSpan.FromSeconds(_profile.ReloadAfter.Value);
+
             _reloadChangeToken = ChangeToken.OnChange(
                 () => new CancellationChangeToken(
-                    new CancellationTokenSource(_profile.ReloadAfter.Value).Token
+                    new CancellationTokenSource(delay).Token
                 ),
                 Load
             );

@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>6e991e9d-ddfa-43e1-b82e-4f95fdabeaf4</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\CatConsult.AppConfigConfigurationProvider\CatConsult.AppConfigConfigurationProvider.csproj" />
+  </ItemGroup>
+
+</Project>

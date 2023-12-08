@@ -1,0 +1,9 @@
+# This is an example of the expected YAML configuration for the AppConfigTesting sample.
+# Copy the content below into AppConfig free-form profile and then set your dotnet user-secrets to use the profile:
+# dotnet user-secrets set "AppConfig:Profiles:0" "abc1234:def5678:ghi9123"
+YamlTest:
+  Test: true
+
+  Person:
+    Name: Foobar Baz
+    Age: 25
