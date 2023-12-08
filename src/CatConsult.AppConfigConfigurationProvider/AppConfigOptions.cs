@@ -9,5 +9,5 @@ public class AppConfigOptions
 
 public class Defaults
 {
-    public int ReloadAfter { get; set; } = 30;
+    public int ReloadAfter { get; set; } = 60;
 }
