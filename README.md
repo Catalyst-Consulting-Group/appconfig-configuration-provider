@@ -46,7 +46,7 @@ ApplicationId:EnvironmentId:ProfileId[:ReloadAfter]
 
 `ReloadAfter` is an optional 4th parameter that configures the reload/refresh period.
 It is an integer that represents time in seconds.
-If not specified, it defaults to the provider's default setting, which is 30 seconds.
+If not specified, it defaults to the provider's default setting, which is 90 seconds.
 
 The default `ReloadAfter` setting can be overridden as well:
 
@@ -54,7 +54,7 @@ The default `ReloadAfter` setting can be overridden as well:
 {
   "AppConfig": {
     "Defaults": {
-      "ReloadAfter": 90
+      "ReloadAfter": 120
     }
   }
 }
