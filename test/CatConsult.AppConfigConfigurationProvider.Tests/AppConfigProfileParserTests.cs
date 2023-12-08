@@ -19,14 +19,14 @@ public class AppConfigProfileParserTests
 
         var profileString = string.Join(":", applicationId, environmentId, profileId);
 
-        var profile = AppConfigProfileParser.Parse(profileString);
+        var profile = AppConfigProfileParser.Parse(profileString, 30);
 
         profile.ApplicationId.Should().Be(applicationId);
         profile.EnvironmentId.Should().Be(environmentId);
         profile.ProfileId.Should().Be(profileId);
-        profile.ReloadAfter.Should().BeNull();
+        profile.ReloadAfter.Should().Be(30);
 
-        profile = AppConfigProfileParser.Parse(profileString + ":300");
+        profile = AppConfigProfileParser.Parse(profileString + ":300", 30);
 
         profile.ReloadAfter.Should().Be(300);
     }
@@ -38,7 +38,7 @@ public class AppConfigProfileParserTests
     {
         const string profileString = "foo*!:bar-+;:BAZ123:`&%()";
 
-        var act = () => AppConfigProfileParser.Parse(profileString);
+        var act = () => AppConfigProfileParser.Parse(profileString, 30);
 
         act.Should().Throw<Exception>();
     }

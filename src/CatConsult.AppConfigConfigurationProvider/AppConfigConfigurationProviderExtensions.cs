@@ -46,6 +46,6 @@ public static class AppConfigConfigurationProviderExtensions
             .GetSection(sectionName)
             .Get<AppConfigOptions>() ?? new AppConfigOptions();
 
-        return options.Profiles.Select(AppConfigProfileParser.Parse);
+        return options.Profiles.Select(p => AppConfigProfileParser.Parse(p, options.Defaults.ReloadAfter));
     }
 }

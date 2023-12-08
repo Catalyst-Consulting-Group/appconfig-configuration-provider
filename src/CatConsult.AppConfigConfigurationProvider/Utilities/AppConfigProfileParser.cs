@@ -7,7 +7,7 @@ internal static class AppConfigProfileParser
     private const string ProfileStringFormat = "ApplicationId:EnvironmentId:ProfileId[:ReloadAfter]";
     private const string ProfileStringPattern = @"([a-z0-9]{7}):([a-z0-9]{7}):([a-z0-9]{7}):?(\d+)?";
 
-    public static AppConfigProfile Parse(string profileString)
+    public static AppConfigProfile Parse(string profileString, int defaultReloadAfter)
     {
         var match = Regex.Match(profileString, ProfileStringPattern);
 
@@ -23,7 +23,10 @@ internal static class AppConfigProfileParser
         var profileId = groups[3].Value;
         var reloadAfterString = groups[4].Value;
 
-        var profile = new AppConfigProfile(applicationId, environmentId, profileId);
+        var profile = new AppConfigProfile(applicationId, environmentId, profileId)
+        {
+            ReloadAfter = defaultReloadAfter,
+        };
 
         if (int.TryParse(reloadAfterString, out var reloadAfter))
         {
