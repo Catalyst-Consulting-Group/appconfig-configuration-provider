@@ -16,36 +16,41 @@ public static class AppConfigConfigurationProviderExtensions
     public static IConfigurationBuilder AddAppConfig(
         this IConfigurationBuilder builder,
         string sectionName = DefaultSectionName
-    )
-    {
-        foreach (var profile in LoadProfiles(builder, sectionName))
-        {
-            builder.Add(new AppConfigConfigurationSource(profile));
-        }
-
-        return builder;
-    }
+    ) => AddAppConfigInternal(builder, null, sectionName);
 
     public static IConfigurationBuilder AddAppConfig(
         this IConfigurationBuilder builder,
         IAmazonAppConfigData client,
         string sectionName = DefaultSectionName
+    ) => AddAppConfigInternal(builder, client, sectionName);
+
+    private static IConfigurationBuilder AddAppConfigInternal(
+        this IConfigurationBuilder builder,
+        IAmazonAppConfigData? client = null,
+        string sectionName = DefaultSectionName
     )
-    {
-        foreach (var profile in LoadProfiles(builder, sectionName))
-        {
-            builder.Add(new AppConfigConfigurationSource(client, profile));
-        }
-
-        return builder;
-    }
-
-    private static IEnumerable<AppConfigProfile> LoadProfiles(IConfigurationBuilder builder, string sectionName)
     {
         var options = builder.Build()
             .GetSection(sectionName)
             .Get<AppConfigOptions>() ?? new AppConfigOptions();
 
-        return options.Profiles.Select(p => AppConfigProfileParser.Parse(p, options.Defaults.ReloadAfter));
+        var profiles = options.Profiles.Select(p =>
+            AppConfigProfileParser.Parse(p, false, options.Defaults.ReloadAfter)
+        );
+
+        var featureFlagProfiles = options.FeatureFlags.Select(p =>
+            AppConfigProfileParser.Parse(p, true, options.Defaults.ReloadAfter)
+        );
+
+        foreach (var profile in profiles.Concat(featureFlagProfiles))
+        {
+            builder.Add(
+                client is null
+                    ? new AppConfigConfigurationSource(profile)
+                    : new AppConfigConfigurationSource(client, profile)
+            );
+        }
+
+        return builder;
     }
 }
