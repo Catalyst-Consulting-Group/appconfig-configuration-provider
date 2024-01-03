@@ -1,0 +1,128 @@
+using System.Text.Json;
+
+using CatConsult.ConfigurationParsers;
+
+using Humanizer;
+
+namespace CatConsult.AppConfigConfigurationProvider.Utilities;
+
+internal class FeatureFlagsProfileParser : ConfigurationParser
+{
+    private static readonly JsonSerializerOptions JsonSerializerOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+    };
+
+    private FeatureFlagsProfileParser() { }
+
+    public static IDictionary<string, string?> Parse(string json)
+    {
+        var featureFlagProfile = JsonSerializer.Deserialize<FeatureFlagsProfile>(json, JsonSerializerOptions);
+
+        return Parse(featureFlagProfile);
+    }
+
+    public static IDictionary<string, string?> Parse(Stream stream)
+    {
+        var featureFlagProfile = JsonSerializer.Deserialize<FeatureFlagsProfile>(stream, JsonSerializerOptions);
+
+        return Parse(featureFlagProfile);
+    }
+
+    private static IDictionary<string, string?> Parse(FeatureFlagsProfile? profile)
+    {
+        if (profile is null)
+        {
+            return new Dictionary<string, string?>();
+        }
+
+        var parser = new FeatureFlagsProfileParser();
+        parser.ParseInternal(profile);
+
+        return parser.Data;
+    }
+
+    private void ParseInternal(FeatureFlagsProfile profile)
+    {
+        PushContext("FeatureManagement");
+
+        foreach ((string name, FeatureFlag flag) in profile)
+        {
+            PushContext(name.Pascalize());
+            VisitFeatureFlag(flag);
+            PopContext();
+        }
+
+        PopContext();
+    }
+
+    private void VisitFeatureFlag(FeatureFlag flag)
+    {
+        // If the flag has no extra properties, we can use the simple format
+        if (flag.ExtraProperties is null || flag.ExtraProperties.Count == 0)
+        {
+            SetValue(flag.Enabled ? "true" : "false");
+            return;
+        }
+
+        // Otherwise, we have to use the complex format
+
+        // We start by populating the "RequirementType" property, using "Any" as the default value
+        PushContext("RequirementType");
+        SetValue(flag.RequirementType ?? "Any");
+        PopContext();
+
+        // Then we can populate the "EnabledFor" array
+        var i = 0;
+        foreach ((string name, Dictionary<string, string> parameters) in GenerateEnabledForArray(flag.ExtraProperties))
+        {
+            PushContext($"EnabledFor[{i}]");
+
+            PushContext("Name");
+            SetValue(name.Pascalize());
+            PopContext();
+
+            PushContext("Parameters");
+            foreach ((string parameterName, string parameterValue) in parameters)
+            {
+                PushContext(parameterName.Pascalize());
+                SetValue(parameterValue);
+                PopContext(); // parameterName
+            }
+
+            PopContext(); // Parameters
+
+            PopContext(); // EnabledFor[i]
+
+            i++;
+        }
+    }
+
+    private static Dictionary<string, Dictionary<string, string>> GenerateEnabledForArray(IDictionary<string, JsonElement> extraProperties)
+    {
+        var enabledForMap = new Dictionary<string, Dictionary<string, string>>();
+
+        foreach ((string key, JsonElement value) in extraProperties)
+        {
+            // The key is in the format "FeatureFilterName__FeatureFilterParameterName", so we split on the double underscore
+            var nameElements = key.Split("__");
+            if (nameElements.Length != 2)
+            {
+                // If the key is not in the correct format, we skip it
+                continue;
+            }
+
+            // We convert the feature filter name to PascalCase (e.g. "percentage" becomes "Percentage")
+            var featureFilterName = nameElements[0].Pascalize();
+            if (!enabledForMap.TryGetValue(featureFilterName, out var featureFilterParameters))
+            {
+                featureFilterParameters = new Dictionary<string, string>();
+                enabledForMap.Add(featureFilterName, featureFilterParameters);
+            }
+
+            featureFilterParameters.Add(nameElements[1], value.ToString());
+        }
+
+        return enabledForMap;
+    }
+}
