@@ -9,23 +9,23 @@ public class FeatureFlagsProfileParserTests
     [Fact]
     public void Parse_Parses_AppConfig_FeatureFlag_Json()
     {
+        const string sectionName = "FeatureManagementTest";
+
         var json = File.ReadAllText("fixtures/feature-flags.json");
-        var data = FeatureFlagsProfileParser.Parse(json);
+        var data = FeatureFlagsProfileParser.Parse(sectionName, json);
 
-        const string prefixKey = "FeatureManagement";
+        data.Should().Contain($"{sectionName}:SimpleFlag", "true");
 
-        data.Should().Contain($"{prefixKey}:SimpleFlag", "true");
+        ValidateComplexFlag(data, $"{sectionName}:ComplexFlag1", "Any");
+        ValidateComplexFlag(data, $"{sectionName}:ComplexFlag2", "All");
+        ValidateComplexFlag(data, $"{sectionName}:ComplexFlag3", "Any");
 
-        ValidateComplexFlag(data, $"{prefixKey}:ComplexFlag1", "Any");
-        ValidateComplexFlag(data, $"{prefixKey}:ComplexFlag2", "All");
-        ValidateComplexFlag(data, $"{prefixKey}:ComplexFlag3", "Any");
-
-        data.Should().Contain($"{prefixKey}:EdgeCase1:RequirementType", "Any");
-        data.Should().Contain($"{prefixKey}:EdgeCase1:EnabledFor[0]:Name", "AlwaysOn");
+        data.Should().Contain($"{sectionName}:EdgeCase1:RequirementType", "Any");
+        data.Should().Contain($"{sectionName}:EdgeCase1:EnabledFor[0]:Name", "AlwaysOn");
         
-        data.Should().Contain($"{prefixKey}:EdgeCase2:RequirementType", "Any");
-        data.Should().Contain($"{prefixKey}:EdgeCase2:EnabledFor[0]:Name", "Foobar");
-        data.Should().Contain($"{prefixKey}:EdgeCase2:EnabledFor[0]:Parameters:Value", null);
+        data.Should().Contain($"{sectionName}:EdgeCase2:RequirementType", "Any");
+        data.Should().Contain($"{sectionName}:EdgeCase2:EnabledFor[0]:Name", "Foobar");
+        data.Should().Contain($"{sectionName}:EdgeCase2:EnabledFor[0]:Parameters:Value", null);
     }
 
     private static void ValidateComplexFlag(IDictionary<string, string?> data, string flagPrefixKey, string requirementType)

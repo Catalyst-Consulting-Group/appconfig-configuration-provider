@@ -13,30 +13,35 @@ internal class FeatureFlagsProfileParser : ConfigurationParser
         PropertyNameCaseInsensitive = true,
     };
 
-    private FeatureFlagsProfileParser() { }
+    private readonly string _sectionName;
 
-    public static IDictionary<string, string?> Parse(string json)
+    private FeatureFlagsProfileParser(string sectionName)
+    {
+        _sectionName = sectionName;
+    }
+
+    public static IDictionary<string, string?> Parse(string sectionName, string json)
     {
         var featureFlagProfile = JsonSerializer.Deserialize<FeatureFlagsProfile>(json, JsonSerializerOptions);
 
-        return Parse(featureFlagProfile);
+        return Parse(sectionName, featureFlagProfile);
     }
 
-    public static IDictionary<string, string?> Parse(Stream stream)
+    public static IDictionary<string, string?> Parse(string sectionName, Stream stream)
     {
         var featureFlagProfile = JsonSerializer.Deserialize<FeatureFlagsProfile>(stream, JsonSerializerOptions);
 
-        return Parse(featureFlagProfile);
+        return Parse(sectionName, featureFlagProfile);
     }
 
-    private static IDictionary<string, string?> Parse(FeatureFlagsProfile? profile)
+    private static IDictionary<string, string?> Parse(string sectionName, FeatureFlagsProfile? profile)
     {
         if (profile is null)
         {
             return new Dictionary<string, string?>();
         }
 
-        var parser = new FeatureFlagsProfileParser();
+        var parser = new FeatureFlagsProfileParser(sectionName);
         parser.ParseInternal(profile);
 
         return parser.Data;
@@ -44,7 +49,7 @@ internal class FeatureFlagsProfileParser : ConfigurationParser
 
     private void ParseInternal(FeatureFlagsProfile profile)
     {
-        PushContext("FeatureManagement");
+        PushContext(_sectionName);
 
         foreach ((string name, FeatureFlag flag) in profile)
         {
@@ -137,7 +142,7 @@ internal class FeatureFlagsProfileParser : ConfigurationParser
                 JsonValueKind.Undefined => null,
                 _ => value.ToString(),
             };
-                
+
             parameters.Add(parameterName, parameterValue);
         }
 
