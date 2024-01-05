@@ -22,5 +22,15 @@
     "percentage__Value": 50,
     "timeWindow__Start": "2023",
     "timeWindow__End": "2024"
+  },
+  "edgeCase1": {
+    "enabled": true,
+    "requirementType": "Any",
+    "alwaysOn": ""
+  },
+  "edgeCase2": {
+    "enabled": true,
+    "requirementType": "Any",
+    "foobar__value": null
   }
 }

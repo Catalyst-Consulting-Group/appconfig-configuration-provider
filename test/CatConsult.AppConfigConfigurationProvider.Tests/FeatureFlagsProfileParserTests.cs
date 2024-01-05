@@ -19,6 +19,13 @@ public class FeatureFlagsProfileParserTests
         ValidateComplexFlag(data, $"{prefixKey}:ComplexFlag1", "Any");
         ValidateComplexFlag(data, $"{prefixKey}:ComplexFlag2", "All");
         ValidateComplexFlag(data, $"{prefixKey}:ComplexFlag3", "Any");
+
+        data.Should().Contain($"{prefixKey}:EdgeCase1:RequirementType", "Any");
+        data.Should().Contain($"{prefixKey}:EdgeCase1:EnabledFor[0]:Name", "AlwaysOn");
+        
+        data.Should().Contain($"{prefixKey}:EdgeCase2:RequirementType", "Any");
+        data.Should().Contain($"{prefixKey}:EdgeCase2:EnabledFor[0]:Name", "Foobar");
+        data.Should().Contain($"{prefixKey}:EdgeCase2:EnabledFor[0]:Parameters:Value", null);
     }
 
     private static void ValidateComplexFlag(IDictionary<string, string?> data, string flagPrefixKey, string requirementType)

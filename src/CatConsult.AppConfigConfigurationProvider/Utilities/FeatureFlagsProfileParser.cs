@@ -74,16 +74,16 @@ internal class FeatureFlagsProfileParser : ConfigurationParser
 
         // Then we can populate the "EnabledFor" array
         var i = 0;
-        foreach ((string name, Dictionary<string, string> parameters) in GenerateEnabledForArray(flag.ExtraProperties))
+        foreach ((string featureFilter, Dictionary<string, string?> parameters) in ProcessFeatureFilters(flag.ExtraProperties))
         {
             PushContext($"EnabledFor[{i}]");
 
             PushContext("Name");
-            SetValue(name.Pascalize());
+            SetValue(featureFilter.Pascalize());
             PopContext();
 
             PushContext("Parameters");
-            foreach ((string parameterName, string parameterValue) in parameters)
+            foreach ((string parameterName, string? parameterValue) in parameters)
             {
                 PushContext(parameterName.Pascalize());
                 SetValue(parameterValue);
@@ -98,31 +98,49 @@ internal class FeatureFlagsProfileParser : ConfigurationParser
         }
     }
 
-    private static Dictionary<string, Dictionary<string, string>> GenerateEnabledForArray(IDictionary<string, JsonElement> extraProperties)
+    private static Dictionary<string, Dictionary<string, string?>> ProcessFeatureFilters(IDictionary<string, JsonElement> extraProperties)
     {
-        var enabledForMap = new Dictionary<string, Dictionary<string, string>>();
+        var featureFilters = new Dictionary<string, Dictionary<string, string?>>();
 
         foreach ((string key, JsonElement value) in extraProperties)
         {
-            // The key is in the format "FeatureFilterName__FeatureFilterParameterName", so we split on the double underscore
-            var nameElements = key.Split("__");
-            if (nameElements.Length != 2)
+            // The key is in the format "featureFilterName__parameterName", so we split on the double underscore
+            // Another valid format is "featureFilterName", which means that the feature filter has no parameters
+            var keyParts = key.Split("__");
+            if (keyParts.Length > 2)
             {
-                // If the key is not in the correct format, we skip it
-                continue;
+                continue; // We ignore invalid keys
             }
 
             // We convert the feature filter name to PascalCase (e.g. "percentage" becomes "Percentage")
-            var featureFilterName = nameElements[0].Pascalize();
-            if (!enabledForMap.TryGetValue(featureFilterName, out var featureFilterParameters))
+            var featureFilterName = keyParts[0].Pascalize();
+
+            // If there's a second element, we treat it as the parameter name and convert to PascalCase as well (e.g. "fooValue" becomes "FooValue")
+            var parameterName = keyParts.Length == 2
+                ? keyParts[1].Pascalize()
+                : null;
+
+            if (!featureFilters.TryGetValue(featureFilterName, out var parameters))
             {
-                featureFilterParameters = new Dictionary<string, string>();
-                enabledForMap.Add(featureFilterName, featureFilterParameters);
+                parameters = new Dictionary<string, string?>();
+                featureFilters.Add(featureFilterName, parameters);
             }
 
-            featureFilterParameters.Add(nameElements[1], value.ToString());
+            if (string.IsNullOrEmpty(parameterName))
+            {
+                continue;
+            }
+
+            string? parameterValue = value.ValueKind switch
+            {
+                JsonValueKind.Null => null,
+                JsonValueKind.Undefined => null,
+                _ => value.ToString(),
+            };
+                
+            parameters.Add(parameterName, parameterValue);
         }
 
-        return enabledForMap;
+        return featureFilters;
     }
 }
