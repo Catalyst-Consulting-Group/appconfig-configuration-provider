@@ -9,10 +9,10 @@ public class FeatureFlagsProfileParserTests
     [Fact]
     public void Parse_Parses_AppConfig_FeatureFlag_Json()
     {
-        const string sectionName = "FeatureManagementTest";
+        const string sectionName = "FeatureManagement";
 
         var json = File.ReadAllText("fixtures/feature-flags.json");
-        var data = FeatureFlagsProfileParser.Parse(sectionName, json);
+        var data = FeatureFlagsProfileParser.Parse(json);
 
         data.Should().Contain($"{sectionName}:SimpleFlag", "true");
 
