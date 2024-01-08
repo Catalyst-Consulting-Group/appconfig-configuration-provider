@@ -1,14 +1,46 @@
 ﻿@page
 @using Microsoft.Extensions.Options
+@using Microsoft.FeatureManagement
 @model IndexModel
 @inject IOptionsSnapshot<YamlTest> Options
+@inject IFeatureManager FeatureManager
 @{
     ViewData["Title"] = "Home page";
 }
 
 <div class="text-center">
+    <h2>YAML Configuration</h2>
+
     <p>Name: @Options.Value.Person?.Name</p>
     <p>Age: @Options.Value.Person?.Age</p>
     <br>
     <p>Is this a test? @Options.Value.Test</p>
+</div>
+
+<div class="mt-3 text-center">
+    <h2>Features</h2>
+
+    <h3>Registered Features</h3>
+    @await foreach (var feature in FeatureManager.GetFeatureNamesAsync())
+    {
+        <p>
+            <code>@feature</code>
+        </p>
+    }
+
+    <h3>Enabled Features</h3>
+
+    <feature name="EnableFoobar">
+        <p><code>EnableFoobar</code> is enabled</p>
+    </feature>
+    <feature name="EnableFoobar" negate="true">
+        <p><code>EnableFoobar</code> is <b>not</b> enabled</p>
+    </feature>
+
+    <feature name="ComplexFlag">
+        <p><code>ComplexFlag</code> is enabled</p>
+    </feature>
+    <feature name="ComplexFlag" negate="true">
+        <p><code>ComplexFlag</code> is <b>not</b> enabled</p>
+    </feature>
 </div>

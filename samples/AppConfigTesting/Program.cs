@@ -1,5 +1,8 @@
 using CatConsult.AppConfigConfigurationProvider;
 
+using Microsoft.FeatureManagement;
+using Microsoft.FeatureManagement.FeatureFilters;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddAppConfig();
@@ -9,6 +12,10 @@ builder.Services.AddRazorPages();
 
 builder.Services.AddOptions<YamlTest>()
     .BindConfiguration("YamlTest");
+
+builder.Services.AddFeatureManagement()
+    .AddFeatureFilter<TimeWindowFilter>()
+    .AddFeatureFilter<PercentageFilter>();
 
 var app = builder.Build();
 
