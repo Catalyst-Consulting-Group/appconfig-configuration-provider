@@ -81,6 +81,7 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
             if (response.ContentLength > 0)
             {
                 Data = ParseConfig(response.Configuration, response.ContentType);
+                OnReload();
             }
         }
         finally
@@ -118,4 +119,13 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
     }
 
     public void Dispose() => _reloadChangeToken?.Dispose();
+
+    public override string ToString()
+    {
+        var className = GetType().Name;
+        var profile = $"{_profile.ApplicationId}:{_profile.EnvironmentId}:{_profile.ProfileId}:{_profile.ReloadAfter}";
+        var isFeatureFlag = _profile.IsFeatureFlag ? " (Feature Flag)" : string.Empty;
+
+        return $"{className} - {profile}{isFeatureFlag}";
+    }
 }
