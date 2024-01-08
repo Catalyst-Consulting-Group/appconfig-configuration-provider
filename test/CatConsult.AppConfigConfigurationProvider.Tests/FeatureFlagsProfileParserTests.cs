@@ -21,11 +21,11 @@ public class FeatureFlagsProfileParserTests
         ValidateComplexFlag(data, $"{sectionName}:ComplexFlag3", "Any");
 
         data.Should().Contain($"{sectionName}:EdgeCase1:RequirementType", "Any");
-        data.Should().Contain($"{sectionName}:EdgeCase1:EnabledFor[0]:Name", "AlwaysOn");
+        data.Should().Contain($"{sectionName}:EdgeCase1:EnabledFor:0:Name", "AlwaysOn");
         
         data.Should().Contain($"{sectionName}:EdgeCase2:RequirementType", "Any");
-        data.Should().Contain($"{sectionName}:EdgeCase2:EnabledFor[0]:Name", "Foobar");
-        data.Should().Contain($"{sectionName}:EdgeCase2:EnabledFor[0]:Parameters:Value", null);
+        data.Should().Contain($"{sectionName}:EdgeCase2:EnabledFor:0:Name", "Foobar");
+        data.Should().Contain($"{sectionName}:EdgeCase2:EnabledFor:0:Parameters:Value", null);
     }
 
     private static void ValidateComplexFlag(IDictionary<string, string?> data, string flagPrefixKey, string requirementType)
@@ -36,17 +36,17 @@ public class FeatureFlagsProfileParserTests
         var percentageIndex = 0;
         var timeWindowIndex = 1;
 
-        if (data[$"{flagPrefixKey}:EnabledFor[0]:Name"] != "Percentage")
+        if (data[$"{flagPrefixKey}:EnabledFor:0:Name"] != "Percentage")
         {
             percentageIndex = 1;
             timeWindowIndex = 0;
         }
 
-        data.Should().Contain($"{flagPrefixKey}:EnabledFor[{percentageIndex}]:Name", "Percentage");
-        data.Should().Contain($"{flagPrefixKey}:EnabledFor[{percentageIndex}]:Parameters:Value", "50");
+        data.Should().Contain($"{flagPrefixKey}:EnabledFor:{percentageIndex}:Name", "Percentage");
+        data.Should().Contain($"{flagPrefixKey}:EnabledFor:{percentageIndex}:Parameters:Value", "50");
 
-        data.Should().Contain($"{flagPrefixKey}:EnabledFor[{timeWindowIndex}]:Name", "TimeWindow");
-        data.Should().Contain($"{flagPrefixKey}:EnabledFor[{timeWindowIndex}]:Parameters:Start", "2023");
-        data.Should().Contain($"{flagPrefixKey}:EnabledFor[{timeWindowIndex}]:Parameters:End", "2024");
+        data.Should().Contain($"{flagPrefixKey}:EnabledFor:{timeWindowIndex}:Name", "TimeWindow");
+        data.Should().Contain($"{flagPrefixKey}:EnabledFor:{timeWindowIndex}:Parameters:Start", "2023");
+        data.Should().Contain($"{flagPrefixKey}:EnabledFor:{timeWindowIndex}:Parameters:End", "2024");
     }
 }

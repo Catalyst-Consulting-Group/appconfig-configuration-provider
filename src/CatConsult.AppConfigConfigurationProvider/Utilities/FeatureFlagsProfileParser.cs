@@ -73,10 +73,12 @@ internal class FeatureFlagsProfileParser : ConfigurationParser
         PopContext();
 
         // Then we can populate the "EnabledFor" array
+        PushContext("EnabledFor");
+
         var i = 0;
         foreach ((string featureFilter, Dictionary<string, string?> parameters) in ProcessFeatureFilters(flag.ExtraProperties))
         {
-            PushContext($"EnabledFor[{i}]");
+            PushContext(i);
 
             PushContext("Name");
             SetValue(featureFilter.Pascalize());
@@ -92,10 +94,12 @@ internal class FeatureFlagsProfileParser : ConfigurationParser
 
             PopContext(); // Parameters
 
-            PopContext(); // EnabledFor[i]
+            PopContext(); // i
 
             i++;
         }
+
+        PopContext(); // EnabledFor
     }
 
     private static Dictionary<string, Dictionary<string, string?>> ProcessFeatureFilters(IDictionary<string, JsonElement> extraProperties)

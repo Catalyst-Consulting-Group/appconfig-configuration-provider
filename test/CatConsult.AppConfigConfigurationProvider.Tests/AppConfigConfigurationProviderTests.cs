@@ -149,11 +149,11 @@ public class AppConfigConfigurationProviderTests
         VerifyValue(sut, $"{prefix}:ComplexFlag3:RequirementType", "Any");
 
         VerifyValue(sut, $"{prefix}:EdgeCase1:RequirementType", "Any");
-        VerifyValue(sut, $"{prefix}:EdgeCase1:EnabledFor[0]:Name", "AlwaysOn");
+        VerifyValue(sut, $"{prefix}:EdgeCase1:EnabledFor:0:Name", "AlwaysOn");
         
         VerifyValue(sut, $"{prefix}:EdgeCase2:RequirementType", "Any");
-        VerifyValue(sut, $"{prefix}:EdgeCase2:EnabledFor[0]:Name", "Foobar");
-        VerifyValue(sut, $"{prefix}:EdgeCase2:EnabledFor[0]:Parameters:Value", null);
+        VerifyValue(sut, $"{prefix}:EdgeCase2:EnabledFor:0:Name", "Foobar");
+        VerifyValue(sut, $"{prefix}:EdgeCase2:EnabledFor:0:Parameters:Value", null);
     }
 
     // Helper methods
