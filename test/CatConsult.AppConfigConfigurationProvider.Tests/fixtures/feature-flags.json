@@ -1,0 +1,36 @@
+{
+  "simpleFlag": {
+    "enabled": true
+  },
+  "complexFlag1": {
+    "enabled": true,
+    "requirementType": "Any",
+    "percentage__Value": 50,
+    "timeWindow__Start": "2023",
+    "timeWindow__End": "2024"
+  },
+  "complexFlag2": {
+    "enabled": false,
+    "requirementType": "All",
+    "percentage__Value": 50,
+    "timeWindow__Start": "2023",
+    "timeWindow__End": "2024"
+  },
+  "complexFlag3": {
+    "enabled": true,
+    "requirementType": null,
+    "percentage__Value": 50,
+    "timeWindow__Start": "2023",
+    "timeWindow__End": "2024"
+  },
+  "edgeCase1": {
+    "enabled": true,
+    "requirementType": "Any",
+    "alwaysOn": ""
+  },
+  "edgeCase2": {
+    "enabled": true,
+    "requirementType": "Any",
+    "foobar__value": null
+  }
+}

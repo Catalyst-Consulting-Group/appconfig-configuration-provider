@@ -4,6 +4,8 @@ public class AppConfigOptions
 {
     public List<string> Profiles { get; set; } = new();
 
+    public List<string> FeatureFlags { get; set; } = new();
+
     public Defaults Defaults { get; set; } = new();
 }
 

@@ -11,4 +11,8 @@
     <ProjectReference Include="..\..\src\CatConsult.AppConfigConfigurationProvider\CatConsult.AppConfigConfigurationProvider.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.FeatureManagement.AspNetCore" Version="3.1.1" />
+  </ItemGroup>
+
 </Project>

@@ -1,6 +1,7 @@
 using Amazon.AppConfigData;
 using Amazon.AppConfigData.Model;
 
+using CatConsult.AppConfigConfigurationProvider.Utilities;
 using CatConsult.ConfigurationParsers;
 
 using Microsoft.Extensions.Configuration;
@@ -80,6 +81,7 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
             if (response.ContentLength > 0)
             {
                 Data = ParseConfig(response.Configuration, response.ContentType);
+                OnReload();
             }
         }
         finally
@@ -100,7 +102,7 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
         ConfigurationToken = session.InitialConfigurationToken;
     }
 
-    private static IDictionary<string, string?> ParseConfig(Stream stream, string? contentType)
+    private IDictionary<string, string?> ParseConfig(Stream stream, string? contentType)
     {
         if (!string.IsNullOrEmpty(contentType))
         {
@@ -109,6 +111,7 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
 
         return contentType switch
         {
+            "application/json" when _profile.IsFeatureFlag => FeatureFlagsProfileParser.Parse(stream),
             "application/json" => JsonConfigurationParser.Parse(stream),
             "application/x-yaml" => YamlConfigurationParser.Parse(stream),
             _ => throw new FormatException($"This configuration provider does not support: {contentType ?? "Unknown"}")
@@ -116,4 +119,13 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
     }
 
     public void Dispose() => _reloadChangeToken?.Dispose();
+
+    public override string ToString()
+    {
+        var className = GetType().Name;
+        var profile = $"{_profile.ApplicationId}:{_profile.EnvironmentId}:{_profile.ProfileId}:{_profile.ReloadAfter}";
+        var isFeatureFlag = _profile.IsFeatureFlag ? " (Feature Flag)" : string.Empty;
+
+        return $"{className} - {profile}{isFeatureFlag}";
+    }
 }

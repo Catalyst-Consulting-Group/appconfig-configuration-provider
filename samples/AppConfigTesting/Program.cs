@@ -1,5 +1,7 @@
 using CatConsult.AppConfigConfigurationProvider;
 
+using Microsoft.FeatureManagement;
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Configuration.AddAppConfig();
@@ -9,6 +11,8 @@ builder.Services.AddRazorPages();
 
 builder.Services.AddOptions<YamlTest>()
     .BindConfiguration("YamlTest");
+
+builder.Services.AddFeatureManagement();
 
 var app = builder.Build();
 
