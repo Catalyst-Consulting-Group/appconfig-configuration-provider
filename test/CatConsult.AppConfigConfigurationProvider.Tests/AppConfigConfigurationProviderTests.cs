@@ -150,10 +150,16 @@ public class AppConfigConfigurationProviderTests
 
         VerifyValue(sut, $"{prefix}:EdgeCase1:RequirementType", "Any");
         VerifyValue(sut, $"{prefix}:EdgeCase1:EnabledFor:0:Name", "AlwaysOn");
-        
+
         VerifyValue(sut, $"{prefix}:EdgeCase2:RequirementType", "Any");
         VerifyValue(sut, $"{prefix}:EdgeCase2:EnabledFor:0:Name", "Foobar");
         VerifyValue(sut, $"{prefix}:EdgeCase2:EnabledFor:0:Parameters:Value", null);
+
+        VerifyValue(sut, $"{prefix}:Namespaced.Case1", "true");
+
+        VerifyValue(sut, $"{prefix}:Namespaced.Case2:RequirementType", "Any");
+        VerifyValue(sut, $"{prefix}:Namespaced.Case2:EnabledFor:0:Name", "Microsoft.Percentage");
+        VerifyValue(sut, $"{prefix}:Namespaced.Case2:EnabledFor:0:Parameters:Value", "100");
     }
 
     // Helper methods

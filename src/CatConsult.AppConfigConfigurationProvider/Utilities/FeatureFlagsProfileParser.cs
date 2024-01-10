@@ -48,7 +48,10 @@ internal class FeatureFlagsProfileParser : ConfigurationParser
 
         foreach ((string name, FeatureFlag flag) in profile)
         {
-            PushContext(name.Pascalize());
+            // To support flag names that contain dots, we replace them with underscores and convert to PascalCase (e.g. "foo_bar" becomes "Foo.Bar")
+            var flagName = name.Replace("_", ".").Pascalize();
+
+            PushContext(flagName);
             VisitFeatureFlag(flag);
             PopContext();
         }
@@ -81,13 +84,13 @@ internal class FeatureFlagsProfileParser : ConfigurationParser
             PushContext(i);
 
             PushContext("Name");
-            SetValue(featureFilter.Pascalize());
+            SetValue(featureFilter);
             PopContext();
 
             PushContext("Parameters");
             foreach ((string parameterName, string? parameterValue) in parameters)
             {
-                PushContext(parameterName.Pascalize());
+                PushContext(parameterName);
                 SetValue(parameterValue);
                 PopContext(); // parameterName
             }
@@ -116,8 +119,8 @@ internal class FeatureFlagsProfileParser : ConfigurationParser
                 continue; // We ignore invalid keys
             }
 
-            // We convert the feature filter name to PascalCase (e.g. "percentage" becomes "Percentage")
-            var featureFilterName = keyParts[0].Pascalize();
+            // To support namespaced feature filters, we split on single underscores, convert the parts to PascalCase, and join them with "." (e.g. "microsoft_percentage" becomes "Microsoft.Percentage")
+            var featureFilterName = string.Join(".", keyParts[0].Split("_").Select(p => p.Pascalize()));
 
             // If there's a second element, we treat it as the parameter name and convert to PascalCase as well (e.g. "fooValue" becomes "FooValue")
             var parameterName = keyParts.Length == 2
