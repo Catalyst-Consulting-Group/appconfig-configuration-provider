@@ -148,6 +148,8 @@ To get around some of the limitations of how AppConfig lets you construct attrib
   - A filter with parameters should be named `featureFilter__parameterName` and have a value for the parameter (e.g. `"percentage__value": 50`)
     - The provider uses the double underscore (`__`) to separate the filter name from the parameter name
     - You can supply multiple parameters using this scheme (e.g. `"percentage__value": 50, "percentage__foobar": "baz"`)
+  - Namespaced filters are support with the usage of a single underscore (`_`) (e.g. `"namespace_featureFilter": null` -> `Namespace.FeatureFilter`)
+  - Extremely complex filters with deeply nested attributes are not supported (ex. `Microsoft.Targeting` and its parameters)
 
 There are likely to be some limitations with this approach, so please open an issue if you find any that don't match your use case.
 

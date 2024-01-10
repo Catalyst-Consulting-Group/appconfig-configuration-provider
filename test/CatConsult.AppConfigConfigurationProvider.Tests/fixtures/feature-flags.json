@@ -32,5 +32,13 @@
     "enabled": true,
     "requirementType": "Any",
     "foobar__value": null
+  },
+  "namespaced_Case1": {
+    "enabled": true
+  },
+  "namespaced_Case2": {
+    "enabled": true,
+    "requirementType": "Any",
+    "microsoft_percentage__Value": 100
   }
 }
