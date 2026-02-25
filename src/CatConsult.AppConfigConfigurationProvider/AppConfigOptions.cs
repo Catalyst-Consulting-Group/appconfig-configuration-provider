@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace CatConsult.AppConfigConfigurationProvider;
+﻿namespace CatConsult.AppConfigConfigurationProvider;
 
 
 /// <summary>
