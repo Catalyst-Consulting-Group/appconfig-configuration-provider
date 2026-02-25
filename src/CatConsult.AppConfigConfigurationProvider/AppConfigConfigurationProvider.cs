@@ -16,6 +16,7 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
     private readonly IAmazonAppConfigData _client;
     private readonly AppConfigProfile _profile;
     private readonly SemaphoreSlim _lock;
+    private const int DefaultPollIntervalSeconds = 30;
 
     private IDisposable? _reloadChangeToken;
 
@@ -75,7 +76,7 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
 
             var response = await _client.GetLatestConfigurationAsync(request);
             ConfigurationToken = response.NextPollConfigurationToken;
-            NextPollingTime = DateTimeOffset.UtcNow.AddSeconds(response.NextPollIntervalInSeconds);
+            NextPollingTime = DateTimeOffset.UtcNow.AddSeconds(response.NextPollIntervalInSeconds ?? DefaultPollIntervalSeconds);
 
             // If the remote configuration has changed, the API will send back data and we re-parse
             if (response.ContentLength > 0)
