@@ -15,8 +15,8 @@ public class SecretsManagerArn
     private const string ArnPrefix = "arn:";
     private const string SecretsManagerService = "secretsmanager";
     private const int ExpectedMinSegments = 7; // ARN format has 7 colon-delimited segments: arn:{partition}:{service}:{region}:{accountId}:secret:{secretName}
-    public string FullArn { get; }  // The full original ARN string (ex: "arn:aws-us-gov:secretsmanager:us-gov-west-1:123456789012:secret:sit/examplesecret")
-    public string Partition { get; }  // AWS partition (ex: "aws" for standard, "aws-us-gov" for GovCloud)
+    public string FullArn { get; } // The full original ARN string (ex: "arn:aws-us-gov:secretsmanager:us-gov-west-1:123456789012:secret:sit/examplesecret")
+    public string Partition { get; } // AWS partition (ex: "aws" for standard, "aws-us-gov" for GovCloud)
     public string Region { get; } // AWS region (ex: "us-gov-west-1")
     public string AccountId { get; }
     public string SecretName { get; }
