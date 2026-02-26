@@ -75,7 +75,7 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
 
             var response = await _client.GetLatestConfigurationAsync(request);
             ConfigurationToken = response.NextPollConfigurationToken;
-            NextPollingTime = DateTimeOffset.UtcNow.AddSeconds(response.NextPollIntervalInSeconds);
+            NextPollingTime = DateTimeOffset.UtcNow.AddSeconds(response.NextPollIntervalInSeconds ?? 15);
 
             // If the remote configuration has changed, the API will send back data and we re-parse
             if (response.ContentLength > 0)
@@ -106,7 +106,7 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
     {
         if (!string.IsNullOrEmpty(contentType))
         {
-            contentType = contentType.Split(";")[0];
+            contentType = contentType?.Split(';')[0];
         }
 
         return contentType switch
