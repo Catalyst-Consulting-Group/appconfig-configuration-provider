@@ -16,7 +16,6 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
     private readonly IAmazonAppConfigData _client;
     private readonly AppConfigProfile _profile;
     private readonly SemaphoreSlim _lock;
-    private const int DefaultPollIntervalSeconds = 30;
 
     private IDisposable? _reloadChangeToken;
 
