@@ -46,8 +46,11 @@ internal class FeatureFlagsProfileParser : ConfigurationParser
     {
         PushContext("FeatureManagement");
 
-        foreach ((string name, FeatureFlag flag) in profile)
+        foreach (var item in profile)
         {
+            var name = item.Key;
+            var flag = item.Value;
+
             // To support flag names that contain dots, we replace them with underscores and convert to PascalCase (e.g. "foo_bar" becomes "Foo.Bar")
             var flagName = name.Replace("_", ".").Pascalize();
 
@@ -79,8 +82,11 @@ internal class FeatureFlagsProfileParser : ConfigurationParser
         PushContext("EnabledFor");
 
         var i = 0;
-        foreach ((string featureFilter, Dictionary<string, string?> parameters) in ProcessFeatureFilters(flag.ExtraProperties))
+        foreach (var item in ProcessFeatureFilters(flag.ExtraProperties))
         {
+            var featureFilter = item.Key;
+            var parameters = item.Value;
+
             PushContext(i);
 
             PushContext("Name");
@@ -88,8 +94,10 @@ internal class FeatureFlagsProfileParser : ConfigurationParser
             PopContext();
 
             PushContext("Parameters");
-            foreach ((string parameterName, string? parameterValue) in parameters)
+            foreach (var param in parameters)
             {
+                var parameterName = param.Key;
+                var parameterValue = param.Value;
                 PushContext(parameterName);
                 SetValue(parameterValue);
                 PopContext(); // parameterName
@@ -109,18 +117,20 @@ internal class FeatureFlagsProfileParser : ConfigurationParser
     {
         var featureFilters = new Dictionary<string, Dictionary<string, string?>>();
 
-        foreach ((string key, JsonElement value) in extraProperties)
+        foreach (var item in extraProperties)
         {
+            var key = item.Key;
+            var value = item.Value;
             // The key is in the format "featureFilterName__parameterName", so we split on the double underscore
             // Another valid format is "featureFilterName", which means that the feature filter has no parameters
-            var keyParts = key.Split("__");
+            var keyParts = key.Split(["__"], StringSplitOptions.None);
             if (keyParts.Length > 2)
             {
                 continue; // We ignore invalid keys
             }
 
             // To support namespaced feature filters, we split on single underscores, convert the parts to PascalCase, and join them with "." (e.g. "microsoft_percentage" becomes "Microsoft.Percentage")
-            var featureFilterName = string.Join(".", keyParts[0].Split("_").Select(p => p.Pascalize()));
+            var featureFilterName = string.Join(".", keyParts[0].Split('_').Select(p => p.Pascalize()));
 
             // If there's a second element, we treat it as the parameter name and convert to PascalCase as well (e.g. "fooValue" becomes "FooValue")
             var parameterName = keyParts.Length == 2
@@ -145,7 +155,10 @@ internal class FeatureFlagsProfileParser : ConfigurationParser
                 _ => value.ToString(),
             };
 
-            parameters.Add(parameterName, parameterValue);
+            if (parameterName != null)
+            {
+                parameters.Add(parameterName, parameterValue);
+            }
         }
 
         return featureFilters;

@@ -1,6 +1,5 @@
 namespace CatConsult.AppConfigConfigurationProvider;
 
-
 /// <summary>
 /// Represents a single AWS AppConfig configuration profile
 ///
@@ -11,8 +10,19 @@ namespace CatConsult.AppConfigConfigurationProvider;
 ///
 /// In appsettings.$ENV.json, profiles are declared as colon-delimited strings: "ApplicationId:EnvironmentId:ProfileId"
 /// </summary>
-public record AppConfigProfile(string ApplicationId, string EnvironmentId, string ProfileId)
+public class AppConfigProfile
 {
+    public AppConfigProfile(string applicationId, string environmentId, string profileId)
+    {
+        ApplicationId = applicationId;
+        EnvironmentId = environmentId;
+        ProfileId = profileId;
+    }
+
+    public string ApplicationId { get; }
+    public string EnvironmentId { get; }
+    public string ProfileId { get; }
+
     // Indicates whether the profile is a feature flag configuration profile
     // Feature flag profiles are parsed differently, we use FeatureFlagsProfileParser instead of the standard JSON/YAML parser
     public bool IsFeatureFlag { get; set; }
