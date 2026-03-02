@@ -1,5 +1,7 @@
 using Amazon.AppConfigData;
 
+using CatConsult.AppConfigConfigurationProvider.Secrets;
+
 using Microsoft.Extensions.Configuration;
 
 namespace CatConsult.AppConfigConfigurationProvider;
@@ -20,11 +22,13 @@ public sealed class AppConfigConfigurationSource : IConfigurationSource
 {
     private readonly AppConfigConfigurationProvider _provider;
 
-    public AppConfigConfigurationSource(IAmazonAppConfigData client, AppConfigProfile profile) =>
-        _provider = new AppConfigConfigurationProvider(client, profile);
+    // Constructor for testing — accepts mocked AppConfig client and an optional secret resolver
+    public AppConfigConfigurationSource(IAmazonAppConfigData appConfigClient, AppConfigProfile profile, SecretsManagerSecretResolver? secretResolver = null) =>
+        _provider = new AppConfigConfigurationProvider(appConfigClient, profile, secretResolver);
 
-    public AppConfigConfigurationSource(AppConfigProfile profile) =>
-        _provider = new AppConfigConfigurationProvider(profile);
+    // Constructor for production — creates default AWS clients internally
+    public AppConfigConfigurationSource(AppConfigProfile profile, SecretsManagerSecretResolver? secretResolver = null) =>
+        _provider = new AppConfigConfigurationProvider(profile, secretResolver);
 
     public IConfigurationProvider Build(IConfigurationBuilder builder) => _provider;
 }
