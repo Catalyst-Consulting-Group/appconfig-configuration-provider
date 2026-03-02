@@ -28,7 +28,7 @@ public class Defaults
 
 public class SecretsManagerOptions
 {
-    public bool Enabled { get; set; } = false;
+    public bool Enabled { get; set; } = true;
 
     // How long in seconds resolved secrets remain cached before being re-fetched. Default: 300 (5 minutes)
     public int CacheTtlSeconds { get; set; } = 300;
