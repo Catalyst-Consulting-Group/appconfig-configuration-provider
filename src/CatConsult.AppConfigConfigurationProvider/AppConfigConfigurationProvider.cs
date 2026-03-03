@@ -104,7 +104,6 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
                 ConfigurationToken = ConfigurationToken
             };
 
-
             // Call GetLatestConfiguration - AWS returns data only if config has changed since the last token
             var response = await _client.GetLatestConfigurationAsync(request);
             ConfigurationToken = response.NextPollConfigurationToken;
@@ -128,10 +127,9 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
         }
     }
 
-    /// <summary>
-    /// Iterates over parsed config key/value pairs and resolves any Secrets Manager ARN values
-    /// to their actual secret strings. Non-ARN values are left unchanged.
-    /// </summary>
+    // Iterates over the parsed AppConfig key/value pairs
+    // and resolves any Secrets Manager ARN values to their actual secret strings.
+    // Non-ARN values are left unchanged
     private async Task<IDictionary<string, string?>> ResolveSecretsAsync(IDictionary<string, string?> parsed)
     {
         var resolved = new Dictionary<string, string?>(parsed.Count, StringComparer.OrdinalIgnoreCase);
@@ -140,26 +138,29 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
         {
             if (string.IsNullOrEmpty(entry.Value) || !SecretsManagerArn.IsSecretsManagerArn(entry.Value))
             {
-                // Normal config value — leave as-is
+                // Normal config value, leave as-is
                 resolved[entry.Key] = entry.Value;
                 continue;
             }
 
-            // ARN detected — resolve to the actual secret string
+            // ARN detected, resolve to the actual secret string
             try
             {
                 resolved[entry.Key] = await _secretResolver!.ResolveSecretAsync(entry.Value);
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException(
-                    $"Failed to resolve secret for config key '{entry.Key}' with ARN '{entry.Value}'", ex);
+                // If resolution fails for any ARN, throws with the config key name for easy debugging at startup
+                throw new InvalidOperationException($"Failed to resolve secret for config key '{entry.Key}' with ARN '{entry.Value}'", ex);
             }
         }
 
         return resolved;
     }
 
+    // Opens a new session with AWS AppConfig for this provider's AppConfig profile
+    // The session gives us an InitialConfigurationToken, which is then used by GetLatestConfigurationAsync
+    // to track what config data we've already seen (so AWS only sends data when it's changed)
     private async Task InitializeAppConfigSessionAsync()
     {
         var session = await _client.StartConfigurationSessionAsync(new StartConfigurationSessionRequest
@@ -172,6 +173,11 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
         ConfigurationToken = session.InitialConfigurationToken;
     }
 
+    // Parses the raw config response from AWS AppConfig into flattened key/value pairs
+    // Strips any charset suffix from the content type (ex: "application/json; charset=utf-8" -> "application/json")
+    // then selects the appropriate parser based on content type and whether this profile is a feature flag.
+    // The parsers (from CatConsult.ConfigurationParsers) handle flattening nested structures into
+    // colon-delimited keys (ex: {"Database":{"Host":"localhost"}} ->      "Database:Host" = "localhost").
     private IDictionary<string, string?> ParseConfig(Stream stream, string? contentType)
     {
         if (!string.IsNullOrEmpty(contentType))
@@ -194,6 +200,8 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
         _secretResolver?.Dispose();
     }
 
+    // Provides a readable string representation of this provider instance for debugging and logging
+    // Example output: "AppConfigConfigurationProvider - MyApp:Production:MainProfile:60 (Feature Flag)"
     public override string ToString()
     {
         var className = GetType().Name;

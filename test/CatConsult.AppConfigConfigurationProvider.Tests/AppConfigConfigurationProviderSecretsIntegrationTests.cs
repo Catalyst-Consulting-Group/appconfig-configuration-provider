@@ -22,14 +22,16 @@ public class AppConfigConfigurationProviderSecretsIntegrationTests
     private readonly Mock<IAmazonAppConfigData> _mockAppConfigClient = new();
     private readonly Mock<IAmazonSecretsManager> _mockSecretsClient = new();
 
-    // --- Enabled = true: ARN values should be resolved ---
+    // Enabled = true: ARN values should be resolved 
 
+    // Verifies that when secret resolution is enabled, ARN values are resolved to actual secrets while normal config values are left unchanged
     [Fact]
     public void Load_WhenEnabled_ResolvesArnValues()
     {
         var resolver = CreateResolver();
         SetupSecretsManagerResponse(TestArn, TestSecretValue);
 
+        // Config with a mix of an ARN value and a normal value
         var sut = CreateProvider(
             configJson: $@"{{""SecretKey"":""{TestArn}"",""NormalKey"":""plain-value""}}",
             secretResolver: resolver
@@ -46,6 +48,7 @@ public class AppConfigConfigurationProviderSecretsIntegrationTests
         normalValue.Should().Be("plain-value");
     }
 
+    // Verifies that when multiple config values are ARNs, each one is independently resolved to its actual secret
     [Fact]
     public void Load_WhenEnabled_MultipleArnsResolved()
     {
@@ -56,6 +59,7 @@ public class AppConfigConfigurationProviderSecretsIntegrationTests
         SetupSecretsManagerResponse(TestArn, TestSecretValue);
         SetupSecretsManagerResponse(arn2, secret2);
 
+        // Config with two different ARN values
         var sut = CreateProvider(
             configJson: $@"{{""Secret1"":""{TestArn}"",""Secret2"":""{arn2}""}}",
             secretResolver: resolver
@@ -63,6 +67,7 @@ public class AppConfigConfigurationProviderSecretsIntegrationTests
 
         sut.Load();
 
+        // Both ARNs should be resolved to their respective secret values
         sut.TryGet("Secret1", out var value1).Should().BeTrue();
         value1.Should().Be(TestSecretValue);
 
@@ -70,12 +75,14 @@ public class AppConfigConfigurationProviderSecretsIntegrationTests
         value2.Should().Be(secret2);
     }
 
+    // Verifies that null and empty config values are skipped during secret resolution
     [Fact]
     public void Load_WhenEnabled_NullAndEmptyValuesSkipped()
     {
         var resolver = CreateResolver();
         SetupSecretsManagerResponse(TestArn, TestSecretValue);
 
+        // Config with an ARN, an empty string, and a null value
         var sut = CreateProvider(
             configJson: $@"{{""SecretKey"":""{TestArn}"",""EmptyKey"":"""",""NullKey"":null}}",
             secretResolver: resolver
@@ -83,19 +90,22 @@ public class AppConfigConfigurationProviderSecretsIntegrationTests
 
         sut.Load();
 
+        // ARN should be resolved as normal
         sut.TryGet("SecretKey", out var secretValue).Should().BeTrue();
         secretValue.Should().Be(TestSecretValue);
 
+        // Empty value should be left as-is, not treated as an ARN
         sut.TryGet("EmptyKey", out var emptyValue).Should().BeTrue();
         emptyValue.Should().Be("");
     }
 
-    // --- Enabled = false: ARN values should NOT be resolved ---
+    // Enabled = false: ARN values should NOT be resolved
 
+    // Verifies that when secret resolution is disabled , ARN values are left as raw ARN strings in the config - no resolution attempt is made
     [Fact]
     public void Load_WhenDisabled_LeavesArnValuesAsIs()
     {
-        // No resolver passed — simulates SecretsManager.Enabled = false
+        // No resolver passed simulates SecretsManager.Enabled = false
         var sut = CreateProvider(
             configJson: $@"{{""SecretKey"":""{TestArn}"",""NormalKey"":""plain-value""}}",
             secretResolver: null
@@ -112,8 +122,10 @@ public class AppConfigConfigurationProviderSecretsIntegrationTests
         normalValue.Should().Be("plain-value");
     }
 
-    // --- Error handling ---
+    // Error handling
 
+    // Verifies that when a secret can't be resolved (ex: secret doesn't exist in AWS),
+    // the error is wrapped in an InvalidOperationException that includes the config key name
     [Fact]
     public void Load_WhenSecretResolutionFails_ThrowsWithConfigKey()
     {
@@ -139,8 +151,11 @@ public class AppConfigConfigurationProviderSecretsIntegrationTests
             .WithInnerException<Amazon.SecretsManager.Model.ResourceNotFoundException>();
     }
 
-    // --- TTL caching across reloads ---
+    // TTL caching across reloads
 
+    // Verifies that resolved secrets are cached across provider reloads
+    // When Load() is called twice with the same ARN, Secrets Manager should only be called once 
+    // the second load should use the cached value from the shared resolver
     [Fact]
     public void Load_CalledTwice_SecretsCachedWithinTtl()
     {
@@ -156,20 +171,21 @@ public class AppConfigConfigurationProviderSecretsIntegrationTests
         sut.Load();
         sut.Load();
 
-        // Secrets Manager should only have been called once — second load used cache
+        // Secrets Manager should only have been called once, second load used cache
         _mockSecretsClient.Verify(c => c.GetSecretValueAsync(
             It.IsAny<GetSecretValueRequest>(),
             It.IsAny<CancellationToken>()
         ), Times.Once());
     }
 
-    // --- Helpers ---
+    // Helpers
 
     private SecretsManagerSecretResolver CreateResolver()
     {
         return new SecretsManagerSecretResolver(_mockSecretsClient.Object, DefaultCacheTtlSeconds);
     }
 
+    // Creates a resolver with the mocked Secrets Manager client for testing
     private void SetupSecretsManagerResponse(string arn, string secretValue)
     {
         _mockSecretsClient
@@ -183,6 +199,8 @@ public class AppConfigConfigurationProviderSecretsIntegrationTests
             });
     }
 
+    // Creates a provider with a mocked AppConfig client that returns the given JSON config
+    // Auto-reload is disabled so tests only fetch when Load() is explicitly called
     private AppConfigConfigurationProvider CreateProvider(string configJson, SecretsManagerSecretResolver? secretResolver)
     {
         var profile = new AppConfigProfile("test", "foo", "bar")
@@ -228,6 +246,8 @@ public class AppConfigConfigurationProviderSecretsIntegrationTests
         return new AppConfigConfigurationProvider(_mockAppConfigClient.Object, profile, secretResolver);
     }
 
+    // Sets up the mocked AppConfig client to return a session and the given JSON config content
+    // NextPollIntervalInSeconds is set to -1 so the polling interval doesn't block subsequent Load() calls in tests
     private void SetupAppConfigMock(string configJson)
     {
         _mockAppConfigClient

@@ -37,6 +37,9 @@ public static class AppConfigConfigurationProviderExtensions
         string sectionName = DefaultSectionName
     ) => AddAppConfigInternal(builder, client, sectionName);
 
+    // Core implementation for AddAppConfig(). Reads AppConfig options from the current configuration
+    // optionally creates a shared secret resolver, then registers one AppConfigConfigurationSource
+    // per AWS AppConfig profile into the builder so each profile gets its own independent provider
     private static IConfigurationBuilder AddAppConfigInternal(
         this IConfigurationBuilder builder,
         IAmazonAppConfigData? client = null,
@@ -50,8 +53,8 @@ public static class AppConfigConfigurationProviderExtensions
             .GetSection(sectionName)
             .Get<AppConfigOptions>() ?? new AppConfigOptions();
 
-        // Create the secret resolver if SecretsManager is enabled.
-        // A single resolver instance is shared across all providers so they share the same cache.
+        // Create the secret resolver if SecretsManager is enabled
+        // A single resolver instance is shared across all providers so they share the same cache
         SecretsManagerSecretResolver? secretResolver = null;
         if (options.SecretsManager.Enabled)
         {
