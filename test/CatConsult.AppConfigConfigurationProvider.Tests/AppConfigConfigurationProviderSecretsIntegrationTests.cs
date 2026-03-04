@@ -1,14 +1,10 @@
 using System.Text;
-
 using Amazon.AppConfigData;
 using Amazon.AppConfigData.Model;
 using Amazon.SecretsManager;
 using Amazon.SecretsManager.Model;
-
 using CatConsult.AppConfigConfigurationProvider.Secrets;
-
 using FluentAssertions;
-
 using Moq;
 
 namespace CatConsult.AppConfigConfigurationProvider.Tests;
