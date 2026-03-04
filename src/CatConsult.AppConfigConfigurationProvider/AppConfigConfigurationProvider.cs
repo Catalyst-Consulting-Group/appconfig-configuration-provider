@@ -1,5 +1,3 @@
-using System.Threading;
-
 using Amazon.AppConfigData;
 using Amazon.AppConfigData.Model;
 
