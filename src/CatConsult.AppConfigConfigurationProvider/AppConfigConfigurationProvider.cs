@@ -144,7 +144,7 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
             // ARN detected, resolve to the actual secret string
             try
             {
-                resolved[entry.Key] = await _secretResolver!.ResolveSecretAsync(entry.Value);
+                resolved[entry.Key] = await _secretResolver!.ResolveSecretAsync(entry.Value!);
             }
             catch (Exception ex)
             {
