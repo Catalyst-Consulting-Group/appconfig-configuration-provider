@@ -1,7 +1,5 @@
 using Amazon.AppConfigData;
-
 using CatConsult.AppConfigConfigurationProvider.Secrets;
-
 using Microsoft.Extensions.Configuration;
 
 namespace CatConsult.AppConfigConfigurationProvider;
