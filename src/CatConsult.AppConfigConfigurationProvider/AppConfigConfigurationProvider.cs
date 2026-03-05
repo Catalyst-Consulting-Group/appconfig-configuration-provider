@@ -1,6 +1,7 @@
 using Amazon.AppConfigData;
 using Amazon.AppConfigData.Model;
 
+using CatConsult.AppConfigConfigurationProvider.Secrets;
 using CatConsult.AppConfigConfigurationProvider.Utilities;
 using CatConsult.ConfigurationParsers;
 
@@ -9,29 +10,53 @@ using Microsoft.Extensions.Primitives;
 
 namespace CatConsult.AppConfigConfigurationProvider;
 
+/// <summary>
+/// Custom configuration provider that fetches configuration data from AWS AppConfig
+/// and supplies it as flattened key/value pairs to the ASP.NET IConfiguration tree
+///
+/// Each instance handles a single AppConfigProfile. Multiple providers are registered
+/// (one per profile) by AppConfigConfigurationProviderExtensions.AddAppConfig()
+///
+/// When secret resolution is enabled, the provider detects Secrets Manager ARN values
+/// in the parsed AWS AppConfig data and resolves them to actual secret strings before setting
+/// them on the IConfiguration tree. The application consuming IConfiguration never sees ARNs
+///
+/// Concurrency is handled with a SemaphoreSlim to prevent overlapping fetches
+/// Auto-reload is controlled by the profile's ReloadAfter interval using ChangeToken
+/// </summary>
 public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDisposable
 {
-    private const int LockReleaseTimeout = 3_000;
-
-    private readonly IAmazonAppConfigData _client;
-    private readonly AppConfigProfile _profile;
-    private readonly SemaphoreSlim _lock;
-
+    private const int LockReleaseTimeout = 3_000; // Max milliseconds to wait for the lock before giving up
+    private readonly IAmazonAppConfigData _client; // AWS AppConfig client used to fetch configuration data
+    private readonly AppConfigProfile _profile; // The specific AppConfig profile this provider instance is responsible for fetching
+    private readonly SemaphoreSlim _lock; // Prevents concurrent overlapping fetches to AppConfig
+    private readonly SecretsManagerSecretResolver? _secretResolver; // Optional secret resolver - null when SecretsManager is disabled, non-null when enabled
+    // Reference to the recurring timer that calls Load() on an interval (set by ReloadAfter) to re-fetch configuration from AppConfig
+    // Null until the first Load() call sets it up
     private IDisposable? _reloadChangeToken;
 
-    public AppConfigConfigurationProvider(IAmazonAppConfigData client, AppConfigProfile profile)
+    // Constructor for testing — accepts mocked AppConfig client and an optional secret resolver
+    public AppConfigConfigurationProvider(IAmazonAppConfigData client, AppConfigProfile profile, SecretsManagerSecretResolver? secretResolver = null)
     {
         _profile = profile;
         _client = client;
         _lock = new SemaphoreSlim(1, 1);
+        _secretResolver = secretResolver;
     }
 
-    public AppConfigConfigurationProvider(AppConfigProfile profile) : this(new AmazonAppConfigDataClient(), profile) { }
+    public AppConfigConfigurationProvider(AppConfigProfile profile, SecretsManagerSecretResolver? secretResolver = null)
+        : this(new AmazonAppConfigDataClient(), profile, secretResolver) { }
 
+    // Rolling session token from AWS AppConfig - each API response provides the next token to use for the subsequent request
     private string? ConfigurationToken { get; set; }
 
+    // Earliest time the provider is allowed to poll AppConfig again, set by the NextPollIntervalInSeconds value returned by AWS
     private DateTimeOffset NextPollingTime { get; set; }
 
+    // Called by ASP.NET when ConfigurationBuilder.Build() runs during app startup (ex: var app = builder.Build() in Program.cs)
+    // Fetches configuration data from AppConfig via LoadAsync()
+    // On the first call, sets up a recurring timer (based on ReloadAfter) that calls Load() again on an interval to re-fetch from AppConfig
+    // The _reloadChangeToken null check prevents duplicate timers since Load() is called repeatedly by the timer itself
     public override void Load()
     {
         LoadAsync().GetAwaiter().GetResult();
@@ -49,8 +74,10 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
         }
     }
 
+    // Fetches the latest configuration from AWS AppConfig for this provider's profile
     private async Task LoadAsync()
     {
+        // Acquire lock (skip if another thread is already fetching)
         if (!await _lock.WaitAsync(LockReleaseTimeout))
         {
             return;
@@ -58,11 +85,13 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
 
         try
         {
+            // Respect AWS polling interval - skip if it's too early to poll again
             if (DateTimeOffset.UtcNow < NextPollingTime)
             {
                 return;
             }
 
+            // Initialize session on first call to get the initial configuration token
             if (string.IsNullOrEmpty(ConfigurationToken))
             {
                 await InitializeAppConfigSessionAsync();
@@ -73,14 +102,20 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
                 ConfigurationToken = ConfigurationToken
             };
 
+            // Call GetLatestConfiguration - AWS returns data only if config has changed since the last token
             var response = await _client.GetLatestConfigurationAsync(request);
             ConfigurationToken = response.NextPollConfigurationToken;
             NextPollingTime = DateTimeOffset.UtcNow.AddSeconds(response.NextPollIntervalInSeconds ?? 15);
 
-            // If the remote configuration has changed, the API will send back data and we re-parse
+            // If the remote configuration has changed, the API will send back data and we re-parse the response (JSON/YAML) into flattened key/value pairs
             if (response.ContentLength > 0)
             {
-                Data = ParseConfig(response.Configuration, response.ContentType);
+                var parsed = ParseConfig(response.Configuration, response.ContentType);
+                // If secret resolution is enabled, detect and resolve any Secrets Manager ARN values from AWS AppConfig into actual secret values
+                // Update the Data dictionary field (which ASP.NET reads from when the consumer app accesses IConfiguration)
+                Data = _secretResolver != null ? await ResolveSecretsAsync(parsed) : parsed;
+                // Call OnReload() to notify ASP.NET that config values have changed, allowing
+                // consumers using IOptionsMonitor<T> to automatically pick up new values without a restart
                 OnReload();
             }
         }
@@ -90,6 +125,40 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
         }
     }
 
+    // Iterates over the parsed AppConfig key/value pairs
+    // and resolves any Secrets Manager ARN values to their actual secret strings.
+    // Non-ARN values are left unchanged
+    private async Task<IDictionary<string, string?>> ResolveSecretsAsync(IDictionary<string, string?> parsed)
+    {
+        var resolved = new Dictionary<string, string?>(parsed.Count, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var entry in parsed)
+        {
+            if (string.IsNullOrEmpty(entry.Value) || !SecretsManagerArn.IsSecretsManagerArn(entry.Value))
+            {
+                // Normal config value, leave as-is
+                resolved[entry.Key] = entry.Value;
+                continue;
+            }
+
+            // ARN detected, resolve to the actual secret string
+            try
+            {
+                resolved[entry.Key] = await _secretResolver!.ResolveSecretAsync(entry.Value!);
+            }
+            catch (Exception ex)
+            {
+                // If resolution fails for any ARN, throws with the config key name for easy debugging at startup
+                throw new InvalidOperationException($"Failed to resolve secret for config key '{entry.Key}' with ARN '{entry.Value}'", ex);
+            }
+        }
+
+        return resolved;
+    }
+
+    // Opens a new session with AWS AppConfig for this provider's AppConfig profile
+    // The session gives us an InitialConfigurationToken, which is then used by GetLatestConfigurationAsync
+    // to track what config data we've already seen (so AWS only sends data when it's changed)
     private async Task InitializeAppConfigSessionAsync()
     {
         var session = await _client.StartConfigurationSessionAsync(new StartConfigurationSessionRequest
@@ -102,6 +171,11 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
         ConfigurationToken = session.InitialConfigurationToken;
     }
 
+    // Parses the raw config response from AWS AppConfig into flattened key/value pairs
+    // Strips any charset suffix from the content type (ex: "application/json; charset=utf-8" -> "application/json")
+    // then selects the appropriate parser based on content type and whether this profile is a feature flag.
+    // The parsers (from CatConsult.ConfigurationParsers) handle flattening nested structures into
+    // colon-delimited keys (ex: {"Database":{"Host":"localhost"}} ->      "Database:Host" = "localhost").
     private IDictionary<string, string?> ParseConfig(Stream stream, string? contentType)
     {
         if (!string.IsNullOrEmpty(contentType))
@@ -118,8 +192,14 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
         };
     }
 
-    public void Dispose() => _reloadChangeToken?.Dispose();
+    public void Dispose()
+    {
+        _reloadChangeToken?.Dispose();
+        _secretResolver?.Dispose();
+    }
 
+    // Provides a readable string representation of this provider instance for debugging and logging
+    // Example output: "AppConfigConfigurationProvider - MyApp:Production:MainProfile:60 (Feature Flag)"
     public override string ToString()
     {
         var className = GetType().Name;
