@@ -1,3 +1,4 @@
+using System.Text;
 using Amazon.AppConfigData;
 using Amazon.AppConfigData.Model;
 
@@ -127,7 +128,18 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
 
     // Iterates over the parsed AppConfig key/value pairs
     // and resolves any Secrets Manager ARN values to their actual secret strings.
-    // Non-ARN values are left unchanged
+    // If a resolved secret is a JSON object, it's parsed and flattened with the config key as prefix.
+    // Non-ARN values are left unchanged.
+    //
+    // Example: AppConfig contains {"AppName":"SAFE", "Database":"arn:aws:secretsmanager:...", "ApiUrl":"https://..."}
+    // The ARN resolves to {"Host":"prod-db.amazonaws.com","Credentials":{"Username":"admin","Password":"secret"}}
+    // After resolution, the final dictionary is:
+    //   "AppName"                        = "SAFE"
+    //   "Database:Host"                  = "prod-db.amazonaws.com"
+    //   "Database:Credentials:Username"  = "admin"
+    //   "Database:Credentials:Password"  = "secret"
+    //   "ApiUrl"                         = "https://..."
+    // Plain string secrets (non-JSON) are set as single string values
     private async Task<IDictionary<string, string?>> ResolveSecretsAsync(IDictionary<string, string?> parsed)
     {
         var resolved = new Dictionary<string, string?>(parsed.Count, StringComparer.OrdinalIgnoreCase);
@@ -144,7 +156,24 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
             // ARN detected, resolve to the actual secret string
             try
             {
-                resolved[entry.Key] = await _secretResolver!.ResolveSecretAsync(entry.Value!);
+                var secretValue = await _secretResolver!.ResolveSecretAsync(entry.Value!);
+
+                // If the secret is a JSON object, parse and flatten it with the config key as prefix
+                if (IsJsonObject(secretValue))
+                {
+                    using var stream = new MemoryStream(Encoding.UTF8.GetBytes(secretValue));
+                    var nested = JsonConfigurationParser.Parse(stream);
+
+                    foreach (var nestedEntry in nested)
+                    {
+                        resolved[$"{entry.Key}:{nestedEntry.Key}"] = nestedEntry.Value;
+                    }
+                }
+                else
+                {
+                    // Plain string secret, set as single value
+                    resolved[entry.Key] = secretValue;
+                }
             }
             catch (Exception ex)
             {
@@ -154,6 +183,12 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
         }
 
         return resolved;
+    }
+
+    // Checks if a resolved secret value is a JSON object by looking for a leading '{'
+    private static bool IsJsonObject(string value)
+    {
+        return value.TrimStart().StartsWith("{");
     }
 
     // Opens a new session with AWS AppConfig for this provider's AppConfig profile

@@ -95,6 +95,109 @@ public class AppConfigConfigurationProviderSecretsIntegrationTests
         emptyValue.Should().Be("");
     }
 
+    // Verifies that when a resolved secret is a JSON object, it's parsed and flattened with the original config key as prefix
+    [Fact]
+    public void Load_WhenEnabled_JsonSecretFlattenedWithPrefix()
+    {
+        const string jsonSecret = @"{""Username"":""admin"",""Password"":""secret""}";
+
+        var resolver = CreateResolver();
+        SetupSecretsManagerResponse(TestArn, jsonSecret);
+
+        var sut = CreateProvider(
+            configJson: $@"{{""Database"":""{TestArn}""}}",
+            secretResolver: resolver
+        );
+
+        sut.Load();
+
+        // JSON secret should be flattened with "Database" as prefix
+        sut.TryGet("Database:Username", out var username).Should().BeTrue();
+        username.Should().Be("admin");
+
+        sut.TryGet("Database:Password", out var password).Should().BeTrue();
+        password.Should().Be("secret");
+
+        // The original key should not exist as a single value
+        sut.TryGet("Database", out _).Should().BeFalse();
+    }
+
+    // Verifies that nested JSON secrets are fully flattened with colon-delimited keys
+    [Fact]
+    public void Load_WhenEnabled_NestedJsonSecretFullyFlattened()
+    {
+        const string nestedJsonSecret = @"{""Db"":{""Host"":""localhost"",""Port"":""5432""}}";
+
+        var resolver = CreateResolver();
+        SetupSecretsManagerResponse(TestArn, nestedJsonSecret);
+
+        var sut = CreateProvider(
+            configJson: $@"{{""Connection"":""{TestArn}""}}",
+            secretResolver: resolver
+        );
+
+        sut.Load();
+
+        // Nested JSON should be fully flattened: Connection:Db:Host, Connection:Db:Port
+        sut.TryGet("Connection:Db:Host", out var host).Should().BeTrue();
+        host.Should().Be("localhost");
+
+        sut.TryGet("Connection:Db:Port", out var port).Should().BeTrue();
+        port.Should().Be("5432");
+    }
+
+    // Verifies that plain string secrets still resolve as single string values
+    [Fact]
+    public void Load_WhenEnabled_PlainStringSecretUnchanged()
+    {
+        const string plainSecret = "my-api-key-12345";
+
+        var resolver = CreateResolver();
+        SetupSecretsManagerResponse(TestArn, plainSecret);
+
+        var sut = CreateProvider(
+            configJson: $@"{{""ApiKey"":""{TestArn}""}}",
+            secretResolver: resolver
+        );
+
+        sut.Load();
+
+        // Plain string should be set as a single value, not parsed as JSON
+        sut.TryGet("ApiKey", out var value).Should().BeTrue();
+        value.Should().Be(plainSecret);
+    }
+
+    // Verifies that a mix of JSON and plain string secrets are handled correctly in the same config
+    [Fact]
+    public void Load_WhenEnabled_MixedJsonAndStringSecrets()
+    {
+        const string jsonArn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:db-creds";
+        const string jsonSecret = @"{""User"":""admin"",""Pass"":""s3cr3t""}";
+        const string stringSecret = "plain-api-key";
+
+        var resolver = CreateResolver();
+        SetupSecretsManagerResponse(jsonArn, jsonSecret);
+        SetupSecretsManagerResponse(TestArn, stringSecret);
+
+        var sut = CreateProvider(
+            configJson: $@"{{""Database"":""{jsonArn}"",""ApiKey"":""{TestArn}""}}",
+            secretResolver: resolver
+        );
+
+        sut.Load();
+
+        // JSON secret should be flattened
+        sut.TryGet("Database:User", out var user).Should().BeTrue();
+        user.Should().Be("admin");
+
+        sut.TryGet("Database:Pass", out var pass).Should().BeTrue();
+        pass.Should().Be("s3cr3t");
+
+        // Plain string secret should be a single value
+        sut.TryGet("ApiKey", out var apiKey).Should().BeTrue();
+        apiKey.Should().Be(stringSecret);
+    }
+
     // Enabled = false: ARN values should NOT be resolved
 
     // Verifies that when secret resolution is disabled , ARN values are left as raw ARN strings in the config - no resolution attempt is made
