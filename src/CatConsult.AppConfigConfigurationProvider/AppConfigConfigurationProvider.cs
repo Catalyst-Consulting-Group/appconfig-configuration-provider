@@ -128,8 +128,8 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
 
     // Iterates over the parsed AppConfig key/value pairs
     // and resolves any Secrets Manager ARN values to their actual secret strings.
-    // If a resolved secret is a JSON object, it's parsed and flattened with the config key as prefix.
-    // Non-ARN values are left unchanged.
+    // If a resolved secret is a JSON object, it's parsed and flattened with the config key as prefix
+    // Non-ARN values are left unchanged
     //
     // Example: AppConfig contains {"AppName":"SAFE", "Database":"arn:aws:secretsmanager:...", "ApiUrl":"https://..."}
     // The ARN resolves to {"Host":"prod-db.amazonaws.com","Credentials":{"Username":"admin","Password":"secret"}}
