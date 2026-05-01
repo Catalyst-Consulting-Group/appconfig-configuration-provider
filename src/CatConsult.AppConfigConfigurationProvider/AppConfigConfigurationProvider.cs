@@ -38,7 +38,7 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
     // Tracks whether the provider has completed its first successful load
     // On first boot (_hasBooted = false), secret resolution failures crash the app so config issues are caught immediately
     // After boot (_hasBooted = true), failures log the error and keep the previously loaded config
-    private bool _hasBooted;
+    private bool _hasBooted = false;
     // Reference to the recurring timer that calls Load() on an interval (set by ReloadAfter) to re-fetch configuration from AppConfig
     // Null until the first Load() call sets it up
     private IDisposable? _reloadChangeToken;
