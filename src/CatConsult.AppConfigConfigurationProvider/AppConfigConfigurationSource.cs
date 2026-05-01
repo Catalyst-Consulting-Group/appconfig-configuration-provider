@@ -1,6 +1,7 @@
 using Amazon.AppConfigData;
 using CatConsult.AppConfigConfigurationProvider.Secrets;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace CatConsult.AppConfigConfigurationProvider;
 
@@ -21,12 +22,12 @@ public sealed class AppConfigConfigurationSource : IConfigurationSource
     private readonly AppConfigConfigurationProvider _provider;
 
     // Constructor for testing - accepts mocked AppConfig client and an optional secret resolver
-    public AppConfigConfigurationSource(IAmazonAppConfigData appConfigClient, AppConfigProfile profile, SecretsManagerSecretResolver? secretResolver = null) =>
-        _provider = new AppConfigConfigurationProvider(appConfigClient, profile, secretResolver);
+    public AppConfigConfigurationSource(IAmazonAppConfigData appConfigClient, AppConfigProfile profile, SecretsManagerSecretResolver? secretResolver = null, ILogger? logger = null) =>
+        _provider = new AppConfigConfigurationProvider(appConfigClient, profile, secretResolver, logger);
 
     // Constructor for production - creates default AWS clients internally
-    public AppConfigConfigurationSource(AppConfigProfile profile, SecretsManagerSecretResolver? secretResolver = null) =>
-        _provider = new AppConfigConfigurationProvider(profile, secretResolver);
+    public AppConfigConfigurationSource(AppConfigProfile profile, SecretsManagerSecretResolver? secretResolver = null, ILogger? logger = null) =>
+        _provider = new AppConfigConfigurationProvider(profile, secretResolver, logger);
 
     // Called by ASP.NET's ConfigurationBuilder.Build() to get the provider instance for this source
     public IConfigurationProvider Build(IConfigurationBuilder builder) => _provider;
