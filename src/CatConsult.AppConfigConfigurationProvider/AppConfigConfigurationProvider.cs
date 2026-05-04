@@ -100,44 +100,41 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
                 return;
             }
 
-            try
+            // Initialize session on first call to get the initial configuration token
+            if (string.IsNullOrEmpty(ConfigurationToken))
             {
-                // Initialize session on first call to get the initial configuration token
-                if (string.IsNullOrEmpty(ConfigurationToken))
-                {
-                    await InitializeAppConfigSessionAsync();
-                }
-
-                var request = new GetLatestConfigurationRequest
-                {
-                    ConfigurationToken = ConfigurationToken
-                };
-
-                // Call GetLatestConfiguration - AWS returns data only if config has changed since the last token
-                var response = await _client.GetLatestConfigurationAsync(request);
-                ConfigurationToken = response.NextPollConfigurationToken;
-                NextPollingTime = DateTimeOffset.UtcNow.AddSeconds(response.NextPollIntervalInSeconds ?? 15);
-
-                // If the remote configuration has changed, the API will send back data and we re-parse the response (JSON/YAML) into flattened key/value pairs
-                if (response.ContentLength > 0)
-                {
-                    var parsed = ParseConfig(response.Configuration, response.ContentType);
-                    // If secret resolution is enabled, detect and resolve any Secrets Manager ARN values from AWS AppConfig into actual secret values
-                    // Update the Data dictionary field (which ASP.NET reads from when the consumer app accesses IConfiguration)
-                    Data = _secretResolver != null ? await ResolveSecretsAsync(parsed) : parsed;
-                    // Call OnReload() to notify ASP.NET that config values have changed, allowing
-                    // consumers using IOptionsMonitor<T> to automatically pick up new values without a restart
-                    OnReload();
-                }
-
-                _hasBooted = true;
+                await InitializeAppConfigSessionAsync();
             }
-            catch (Exception ex) when (_hasBooted)
+
+            var request = new GetLatestConfigurationRequest
             {
-                // After initial boot, log the error but keep running with previously loaded config
-                _logger.LogError(ex, "Failed to reload configuration for profile {Profile}. Keeping previously loaded config.",
-                    $"{_profile.ApplicationId}:{_profile.EnvironmentId}:{_profile.ProfileId}");
+                ConfigurationToken = ConfigurationToken
+            };
+
+            // Call GetLatestConfiguration - AWS returns data only if config has changed since the last token
+            var response = await _client.GetLatestConfigurationAsync(request);
+            ConfigurationToken = response.NextPollConfigurationToken;
+            NextPollingTime = DateTimeOffset.UtcNow.AddSeconds(response.NextPollIntervalInSeconds ?? 15);
+
+            // If the remote configuration has changed, the API will send back data and we re-parse the response (JSON/YAML) into flattened key/value pairs
+            if (response.ContentLength > 0)
+            {
+                var parsed = ParseConfig(response.Configuration, response.ContentType);
+                // If secret resolution is enabled, detect and resolve any Secrets Manager ARN values from AWS AppConfig into actual secret values
+                // Update the Data dictionary field (which ASP.NET reads from when the consumer app accesses IConfiguration)
+                Data = _secretResolver != null ? await ResolveSecretsAsync(parsed) : parsed;
+                // Call OnReload() to notify ASP.NET that config values have changed, allowing
+                // consumers using IOptionsMonitor<T> to automatically pick up new values without a restart
+                OnReload();
             }
+
+            _hasBooted = true;
+        }
+        catch (Exception ex) when (_hasBooted)
+        {
+            // After initial boot, log the error but keep running with previously loaded config
+            _logger.LogError(ex, "Failed to reload configuration for profile {Profile}. Keeping previously loaded config.",
+                $"{_profile.ApplicationId}:{_profile.EnvironmentId}:{_profile.ProfileId}");
         }
         finally
         {
