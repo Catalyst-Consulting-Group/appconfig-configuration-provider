@@ -7,6 +7,8 @@ using CatConsult.AppConfigConfigurationProvider.Utilities;
 using CatConsult.ConfigurationParsers;
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Primitives;
 
 namespace CatConsult.AppConfigConfigurationProvider;
@@ -32,21 +34,27 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
     private readonly AppConfigProfile _profile; // The specific AppConfig profile this provider instance is responsible for fetching
     private readonly SemaphoreSlim _lock; // Prevents concurrent overlapping fetches to AppConfig
     private readonly SecretsManagerSecretResolver? _secretResolver; // Optional secret resolver - null when SecretsManager is disabled, non-null when enabled
+    private readonly ILogger _logger; // Logger for error reporting during reload failures
+    // Tracks whether the provider has completed its first successful load
+    // On first boot (_hasBooted = false), failures crash the app so config issues are caught immediately
+    // After boot (_hasBooted = true), failures log the error and keep the previously loaded config
+    private bool _hasBooted = false;
     // Reference to the recurring timer that calls Load() on an interval (set by ReloadAfter) to re-fetch configuration from AppConfig
     // Null until the first Load() call sets it up
     private IDisposable? _reloadChangeToken;
 
-    // Constructor for testing — accepts mocked AppConfig client and an optional secret resolver
-    public AppConfigConfigurationProvider(IAmazonAppConfigData client, AppConfigProfile profile, SecretsManagerSecretResolver? secretResolver = null)
+    // Constructor for testing — accepts mocked AppConfig client, an optional secret resolver, and an optional logger
+    public AppConfigConfigurationProvider(IAmazonAppConfigData client, AppConfigProfile profile, SecretsManagerSecretResolver? secretResolver = null, ILogger? logger = null)
     {
         _profile = profile;
         _client = client;
         _lock = new SemaphoreSlim(1, 1);
         _secretResolver = secretResolver;
+        _logger = logger ?? NullLogger.Instance;
     }
 
-    public AppConfigConfigurationProvider(AppConfigProfile profile, SecretsManagerSecretResolver? secretResolver = null)
-        : this(new AmazonAppConfigDataClient(), profile, secretResolver) { }
+    public AppConfigConfigurationProvider(AppConfigProfile profile, SecretsManagerSecretResolver? secretResolver = null, ILogger? logger = null)
+        : this(new AmazonAppConfigDataClient(), profile, secretResolver, logger) { }
 
     // Rolling session token from AWS AppConfig - each API response provides the next token to use for the subsequent request
     private string? ConfigurationToken { get; set; }
@@ -119,6 +127,14 @@ public sealed class AppConfigConfigurationProvider : ConfigurationProvider, IDis
                 // consumers using IOptionsMonitor<T> to automatically pick up new values without a restart
                 OnReload();
             }
+
+            _hasBooted = true;
+        }
+        catch (Exception ex) when (_hasBooted)
+        {
+            // After initial boot, log the error but keep running with previously loaded config
+            _logger.LogError(ex, "Failed to reload configuration for profile {Profile}. Keeping previously loaded config.",
+                $"{_profile.ApplicationId}:{_profile.EnvironmentId}:{_profile.ProfileId}");
         }
         finally
         {

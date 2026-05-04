@@ -277,6 +277,72 @@ public class AppConfigConfigurationProviderSecretsIntegrationTests
         ), Times.Once());
     }
 
+    // _hasBooted behavior
+
+    // Verifies that on first boot (_hasBooted = false), secret resolution failures crash the app so config issues are caught immediately at startup
+    [Fact]
+    public void Load_FirstBootFailure_Throws()
+    {
+        _mockSecretsClient
+            .Setup(c => c.GetSecretValueAsync(
+                It.IsAny<GetSecretValueRequest>(),
+                It.IsAny<CancellationToken>()
+            ))
+            .ThrowsAsync(new Amazon.SecretsManager.Model.ResourceNotFoundException("Secret not found"));
+
+        var resolver = CreateResolver();
+
+        var sut = CreateProvider(
+            configJson: $@"{{""SecretKey"":""{TestArn}""}}",
+            secretResolver: resolver
+        );
+
+        // First boot should throw, app should not start with missing secrets
+        var act = () => sut.Load();
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    // Verifies that after initial boot (_hasBooted = true),
+    // secret resolution failures log the error and keep the previously loaded config instead of crashing
+    [Fact]
+    public void Load_ReloadFailure_RetainsPreviousConfig()
+    {
+        var configJson = $@"{{""SecretKey"":""{TestArn}"",""NormalKey"":""plain-value""}}";
+
+        // First call succeeds, second call throws
+        _mockSecretsClient
+            .SetupSequence(c => c.GetSecretValueAsync(
+                It.Is<GetSecretValueRequest>(r => r.SecretId == TestArn),
+                It.IsAny<CancellationToken>()
+            ))
+            .ReturnsAsync(new GetSecretValueResponse { SecretString = TestSecretValue })
+            .ThrowsAsync(new Amazon.SecretsManager.Model.ResourceNotFoundException("Secret not found"));
+
+        // Use a short TTL so the cache expires between loads, forcing the second call to hit Secrets Manager
+        const int shortTtlSeconds = 1;
+        var resolver = new SecretsManagerSecretResolver(_mockSecretsClient.Object, shortTtlSeconds);
+        var sut = CreateProviderWithMultipleLoads(configJson, resolver);
+
+        // First load succeeds, _hasBooted becomes true
+        sut.Load();
+        sut.TryGet("SecretKey", out var firstValue).Should().BeTrue();
+        firstValue.Should().Be(TestSecretValue);
+
+        // Wait for cache to expire
+        Thread.Sleep(TimeSpan.FromSeconds(shortTtlSeconds + 0.5));
+
+        // Second load fails, should NOT throw, should keep previous config
+        var act = () => sut.Load();
+        act.Should().NotThrow();
+
+        // Previous config should still be intact
+        sut.TryGet("SecretKey", out var retainedValue).Should().BeTrue();
+        retainedValue.Should().Be(TestSecretValue);
+
+        sut.TryGet("NormalKey", out var normalValue).Should().BeTrue();
+        normalValue.Should().Be("plain-value");
+    }
+
     // Helpers
 
     private SecretsManagerSecretResolver CreateResolver()

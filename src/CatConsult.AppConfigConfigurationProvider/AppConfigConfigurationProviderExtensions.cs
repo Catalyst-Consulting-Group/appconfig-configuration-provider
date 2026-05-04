@@ -4,6 +4,7 @@ using CatConsult.AppConfigConfigurationProvider.Secrets;
 using CatConsult.AppConfigConfigurationProvider.Utilities;
 
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace CatConsult.AppConfigConfigurationProvider;
 
@@ -28,22 +29,23 @@ public static class AppConfigConfigurationProviderExtensions
 
     public static IConfigurationBuilder AddAppConfig(
         this IConfigurationBuilder builder,
-        string sectionName = DefaultSectionName
-    ) => AddAppConfigInternal(builder, null, sectionName);
-
+        string sectionName = DefaultSectionName,
+        ILoggerFactory? loggerFactory = null
+    ) => AddAppConfigInternal(builder, null, sectionName, loggerFactory);
     public static IConfigurationBuilder AddAppConfig(
         this IConfigurationBuilder builder,
         IAmazonAppConfigData client,
-        string sectionName = DefaultSectionName
-    ) => AddAppConfigInternal(builder, client, sectionName);
-
+        string sectionName = DefaultSectionName,
+        ILoggerFactory? loggerFactory = null
+    ) => AddAppConfigInternal(builder, client, sectionName, loggerFactory);
     // Core implementation for AddAppConfig(). Reads AppConfig options from the current configuration
     // optionally creates a shared secret resolver, then registers one AppConfigConfigurationSource
     // per AWS AppConfig profile into the builder so each profile gets its own independent provider
     private static IConfigurationBuilder AddAppConfigInternal(
         this IConfigurationBuilder builder,
         IAmazonAppConfigData? client = null,
-        string sectionName = DefaultSectionName
+        string sectionName = DefaultSectionName,
+        ILoggerFactory? loggerFactory = null
     )
     {
         // Read the "AppConfig" section from the current configuration
@@ -61,6 +63,8 @@ public static class AppConfigConfigurationProviderExtensions
             secretResolver = new SecretsManagerSecretResolver(options.SecretsManager.CacheTtlSeconds);
         }
 
+        // Create a logger for the providers if a logger factory was provided by the consumer app
+        var logger = loggerFactory?.CreateLogger<AppConfigConfigurationProvider>();
         // Convert each profile string entry (Application:Environment:Profile format) into an AppConfigProfile object
         var profiles = options.Profiles.Select(p =>
             AppConfigProfileParser.Parse(p, false, options.Defaults.ReloadAfter)
@@ -75,8 +79,8 @@ public static class AppConfigConfigurationProviderExtensions
         {
             builder.Add(
                 client is null
-                    ? new AppConfigConfigurationSource(profile, secretResolver)
-                    : new AppConfigConfigurationSource(client, profile, secretResolver)
+                    ? new AppConfigConfigurationSource(profile, secretResolver, logger)
+                    : new AppConfigConfigurationSource(client, profile, secretResolver, logger)
             );
         }
 
